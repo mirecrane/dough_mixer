@@ -1,69 +1,54 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
+# ESP-IDF 编译产物与临时文件
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.defaults
+*.bin
+*.elf
+*.map
+*.partitions.bin
+*.bootloader.bin
+*.ota_data_initial.bin
+*.flash_args
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-*.so.*
-
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
 *.a
 *.lib
+*.d
+*.i
+*.su
+*.cmd
+*.args
 
-# Executables
-*.exe
-*.out
-*.app
-
-# Build directories
-build/
-Build/
-build-*/
-
-# CMake generated files
-CMakeFiles/
+# CMake 构建文件
 CMakeCache.txt
+CMakeFiles/
 cmake_install.cmake
-Makefile
 install_manifest.txt
-compile_commands.json
 
-# Temporary files
-*.tmp
+# 工具链与依赖文件
+components/
+managed_components/
+esp-idf/
+toolchain/
+
+# VSCode 配置文件（本地专属，不提交）
+.vscode/
+/.vscode/*
+!/.vscode/extensions.json
+!/.vscode/settings.json
+!/.vscode/tasks.json
+!/.vscode/launch.json
+
+# 日志与临时文件
 *.log
+*.tmp
 *.bak
 *.swp
+*~
+*.pid
+core.*
 
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
-.cache/
+# 系统文件
+.DS_Store
+Thumbs.db

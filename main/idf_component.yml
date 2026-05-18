@@ -14,5 +14,7 @@ dependencies:
   #   # `public` flag doesn't have an effect dependencies of the `main` component.
   #   # All dependencies of `main` are public by default.
   #   public: true
-  espressif/openai: ^1.1.0
-  espressif/mdns: ^1.11.0
+  jbrilha/esp_lcd_st7789: "^1.0.2"
+  espressif/esp_lvgl_port: "^2.7.2"
+  lambage/esp_lcd_touch_ft6336u: "^1.0.8"
+  lvgl/lvgl: "^8.4.0"

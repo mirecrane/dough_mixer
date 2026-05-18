@@ -4,7 +4,11 @@ set(src_dirs
             UART
             WIFI
             SPI
-            HTTP)
+            HTTP
+            IIC
+            FT6336U_TOUCH
+            LVGL_UI
+            ST7789V_LED)
 
 set(include_dirs
             GPTIM
@@ -12,7 +16,11 @@ set(include_dirs
             UART
             WIFI
             SPI
-            HTTP)
+            HTTP
+            IIC
+            FT6336U_TOUCH
+            LVGL_UI
+            ST7789V_LED)
 
 
 set(requires

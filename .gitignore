@@ -1,54 +1,78 @@
-# ESP-IDF 编译产物与临时文件
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Directory metadata
+.directory
+
+# Temporary files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Log files
+*.log
+
+# Build artifacts and directories
+**/build/
 build/
-sdkconfig
-sdkconfig.old
-sdkconfig.defaults
+*.o
+*.a
+*.out
+*.exe # For any host-side utilities compiled on Windows
+
+# ESP-IDF specific build outputs
 *.bin
 *.elf
 *.map
-*.partitions.bin
-*.bootloader.bin
-*.ota_data_initial.bin
-*.flash_args
-*.o
-*.obj
-*.a
-*.lib
-*.d
-*.i
-*.su
-*.cmd
-*.args
+flasher_args.json # Generated in build directory
+sdkconfig.old
+sdkconfig
 
-# CMake 构建文件
+# ESP-IDF dependencies
+# For older versions or manual component management
+/components/.idf/
+**/components/.idf/
+# For modern ESP-IDF component manager
+managed_components/
+# If ESP-IDF tools are installed/referenced locally to the project
+.espressif/
+
+# CMake generated files
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 install_manifest.txt
+CTestTestfile.cmake
 
-# 工具链与依赖文件
-components/
-managed_components/
-esp-idf/
-toolchain/
+# Python environment files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+dist/
 
-# VSCode 配置文件（本地专属，不提交）
-.vscode/
-/.vscode/*
-!/.vscode/extensions.json
-!/.vscode/settings.json
-!/.vscode/tasks.json
-!/.vscode/launch.json
+# Virtual environment folders
+venv/
+.venv/
+env/
 
-# 日志与临时文件
-*.log
-*.tmp
-*.bak
-*.swp
-*~
-*.pid
-core.*
+# Language Servers
+.clangd/
+.ccls-cache/
+compile_commands.json
 
-# 系统文件
-.DS_Store
+# Windows specific
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# User-specific configuration files
+*.user
+*.workspace # General workspace files, can be from various tools
+*.suo       # Visual Studio Solution User Options
+*.sln.docstates # Visual Studio

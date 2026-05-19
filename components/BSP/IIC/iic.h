@@ -1,7 +1,7 @@
 #ifndef __IIC_H
 #define __IIC_H
 
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,12 +15,10 @@ extern "C" {
 #define CTP_RST         GPIO_NUM_42    // 电容触摸芯片复位引脚，低电平复位
 
 /**
- * @brief 初始化 I2C0 总线，用于触摸控制器 FT6336U
+ * @brief 初始化 I2C0 总线，用于触摸控制器 FT6336U 
  * @param ret_bus  输出：I2C 总线句柄
  */
-//void iic_touch_init(i2c_master_bus_handle_t *ret_bus);
-
-
+void iic_touch_init(i2c_master_bus_handle_t *ret_bus);
 
 #ifdef __cplusplus
 }

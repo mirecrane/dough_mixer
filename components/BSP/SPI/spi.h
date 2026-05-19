@@ -23,6 +23,9 @@ extern "C" {
 /* 初始化 SPI2 总线 (LCD 通信) */
 void spi_lcd_init(void);
 
+/* 获取 SPI 主机句柄 */
+spi_host_device_t spi_lcd_get_host(void);
+
 #ifdef __cplusplus
 }
 #endif

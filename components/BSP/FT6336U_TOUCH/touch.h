@@ -8,6 +8,10 @@
 extern "C" {
 #endif
 
+/* ST7789V 屏幕分辨率 */
+#define LCD_H_RES       240
+#define LCD_V_RES       320
+
 /* 初始化 FT6336U 触摸控制器 */
 void touch_init(i2c_master_bus_handle_t i2c_bus);
 

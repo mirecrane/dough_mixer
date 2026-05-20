@@ -14,7 +14,6 @@ dependencies:
   #   # `public` flag doesn't have an effect dependencies of the `main` component.
   #   # All dependencies of `main` are public by default.
   #   public: true
-  jbrilha/esp_lcd_st7789: "^1.0.2"
-  espressif/esp_lvgl_port: "^2.7.2"
-  lambage/esp_lcd_touch_ft6336u: "^1.0.8"
-  lvgl/lvgl: "^8.4.0"
+  espressif/esp_lcd_touch_ft5x06: ==1.1.0
+  espressif/esp_lvgl_port: ^2.8.0
+  lvgl/lvgl: ^9.2.0

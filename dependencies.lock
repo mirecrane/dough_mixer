@@ -9,8 +9,22 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 1.2.1
+  espressif/esp_lcd_touch_ft5x06:
+    component_hash: aa3f170c321859146b4084d5e168828d026cb7c67eebfaa524ce48b428182c1e
+    dependencies:
+    - name: espressif/esp_lcd_touch
+      registry_url: https://components.espressif.com
+      require: public
+      version: ^1.2.0
+    - name: idf
+      require: private
+      version: '>=4.4.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.1.0
   espressif/esp_lvgl_port:
-    component_hash: cca194347416db5f7fbe53e3bf788266061032c6b094d0186e9c988d6e8ff218
+    component_hash: fb6c1fdfe70d4ca39a035d63ca394a35f17ec84ce16ff98ecb13a54155d75da4
     dependencies:
     - name: idf
       require: private
@@ -22,45 +36,23 @@ dependencies:
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 2.8.0
+    version: 2.8.0~1
   idf:
     source:
       type: idf
     version: 5.5.4
-  jbrilha/esp_lcd_st7789:
-    component_hash: 95b5a7ed16de15546d37d5ab4abce3b1d8b9ed418ec8b6d06ac8890f082e4188
-    dependencies: []
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    version: 1.0.2
-  lambage/esp_lcd_touch_ft6336u:
-    component_hash: b581c2abc643da397b98d269bb63a6fed8f7efa94df054b00d3e333c387ddb78
-    dependencies:
-    - name: espressif/esp_lcd_touch
-      registry_url: https://components.espressif.com
-      require: public
-      version: ^1.0.4
-    - name: idf
-      require: private
-      version: '>=4.4.2'
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    version: 1.0.8
   lvgl/lvgl:
-    component_hash: d7c1ac037ae6e85d94897f807d6e7ba0946a83e720074fc95a4f6241da9f9f53
+    component_hash: 17e68bfd21f0edf4c3ee838e2273da840bf3930e5dbc3bfa6c1190c3aed41f9f
     dependencies: []
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 8.4.0
+    version: 9.4.0
 direct_dependencies:
+- espressif/esp_lcd_touch_ft5x06
 - espressif/esp_lvgl_port
 - idf
-- jbrilha/esp_lcd_st7789
-- lambage/esp_lcd_touch_ft6336u
 - lvgl/lvgl
-manifest_hash: 97fc5fec8970055ea440890a59da009149ec6d7b05f0b19e2ed7e710e4299730
+manifest_hash: f0a8093c52fe387a28b77e7126adb6c9d16a9baed4bd021122f4db21373889fc
 target: esp32s3
 version: 2.0.0

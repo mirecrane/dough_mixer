@@ -8,7 +8,7 @@ set(src_dirs
             IIC
             FT6336U_TOUCH
             LVGL_UI
-            ST7789V_LED)
+            ST7789V_LCD)
 
 set(include_dirs
             GPTIM
@@ -20,7 +20,7 @@ set(include_dirs
             IIC
             FT6336U_TOUCH
             LVGL_UI
-            ST7789V_LED)
+            ST7789V_LCD)
 
 
 set(requires
@@ -29,7 +29,11 @@ set(requires
             esp_event
             nvs_flash
             lwip
-            esp_http_server)
+            esp_http_server
+            esp_lcd
+            esp_lcd_touch_ft5x06
+            lvgl
+            esp_lvgl_port)
 
 idf_component_register(SRC_DIRS ${src_dirs}
                        INCLUDE_DIRS ${include_dirs}

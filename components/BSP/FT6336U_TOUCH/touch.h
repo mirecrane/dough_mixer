@@ -1,21 +1,39 @@
-#ifndef __FT6336U_TOUCH_H__
-#define __FT6336U_TOUCH_H__
+#ifndef __FT6336U_TOUCH_H
+#define __FT6336U_TOUCH_H
 
-#include "driver/i2c_master.h"
+#include <stdint.h>
+#include <stdbool.h>
 #include "esp_lcd_touch.h"
+#include "esp_lcd_touch_ft5x06.h"
+#include "iic.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// ===================== 触摸引脚 =====================
+#define CTP_INT         GPIO_NUM_41    // 中断引脚
+#define CTP_RST         GPIO_NUM_42    // 复位引脚
 
-/* 初始化 FT6336U 触摸控制器 */
-void touch_init(i2c_master_bus_handle_t i2c_bus);
+// 屏幕分辨率（和ST7789一致）
+#define LCD_WIDTH       240
+#define LCD_HEIGHT      320
 
-/* 获取触摸句柄 */
-esp_lcd_touch_handle_t touch_get_handle(void);
+// 触摸点结构体
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+    bool pressed;
+} touch_point_t;
 
-#ifdef __cplusplus
-}
-#endif
+// 触摸设备全局句柄
+extern esp_lcd_touch_handle_t ft6336u_touch_handle;
 
-#endif // __FT6336U_TOUCH_H__
+/**
+ * @brief  初始化FT6336U触摸芯片（适配esp_lcd_touch_ft5x06 v1.1.0）
+ */
+void ft6336u_touch_init(void);
+
+/**
+ * @brief  读取触摸点坐标
+ * @param  tp: 触摸点结构体指针
+ */
+void ft6336u_read_touch_point(touch_point_t *tp);
+
+#endif // __FT6336U_TOUCH_H

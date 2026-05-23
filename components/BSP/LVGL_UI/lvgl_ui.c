@@ -22,8 +22,13 @@ void lvgl_ui_init(void)
         .hres        = LCD_HOR_RES,
         .vres        = LCD_VER_RES,
         .color_format = LV_COLOR_FORMAT_RGB565,
+        .rotation = {
+            .swap_xy = false,
+            .mirror_x = false,
+            .mirror_y = false,
+        },
         .flags = {
-            .swap_bytes  = 1,  // ST7789V SPI字节序交换
+            .swap_bytes  = 1,
             .buff_dma    = 1,
             .buff_spiram = 0,
         },

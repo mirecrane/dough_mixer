@@ -12,7 +12,7 @@ void bsp_spi2_init(void)
         .miso_io_num = -1,        // ST7789不需要MISO
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 240 * 2, // 一次传输一行数据
+        .max_transfer_sz = 240 * 50 * 2, // 一行240像素×50行×2字节
     };
 
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_HOST, &spi_bus_cfg, SPI_DMA_CH_AUTO));

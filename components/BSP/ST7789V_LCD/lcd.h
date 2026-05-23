@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-// 屏幕分辨率
+// 屏幕分辨率 240×320 竖屏
 #define LCD_HOR_RES 240
 #define LCD_VER_RES 320
 

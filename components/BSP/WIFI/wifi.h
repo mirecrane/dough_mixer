@@ -11,6 +11,10 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define WIFI_SSID      "dough_mixer"
 #define WIFI_PASS      "12345678"
 #define WIFI_CHANNEL   1
@@ -27,5 +31,9 @@ void wifi_init_softap(void);
  * @brief TCP 服务器任务
  */
 void tcp_server_task(void *pvParameters);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

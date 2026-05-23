@@ -7,11 +7,15 @@
 #include "esp_lcd_touch_ft5x06.h"
 #include "iic.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ===================== 触摸引脚 =====================
 #define CTP_INT         GPIO_NUM_41    // 中断引脚
 #define CTP_RST         GPIO_NUM_42    // 复位引脚
 
-// 屏幕分辨率（和ST7789一致）
+// 屏幕分辨率 240×320 竖屏
 #define LCD_WIDTH       240
 #define LCD_HEIGHT      320
 
@@ -35,5 +39,9 @@ void ft6336u_touch_init(void);
  * @param  tp: 触摸点结构体指针
  */
 void ft6336u_read_touch_point(touch_point_t *tp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __FT6336U_TOUCH_H

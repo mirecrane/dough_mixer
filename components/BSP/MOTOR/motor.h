@@ -6,6 +6,10 @@
 #include "gptim.h"
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //步进电机引脚定义
 #define step_stp  GPIO_NUM_4
 #define step_dir  GPIO_NUM_5
@@ -41,9 +45,13 @@
 
 //面粉电机参数
 #define DOUGH_LEDC_CH LEDC_CHANNEL_0
+#define DOUGH_G_PER_SEC 5.0f // 每秒5克，实际根据电机和负载调整
 
 //搅拌电机参数
 #define MIXER_LEDC_CH LEDC_CHANNEL_1
+
+//水泵电机参数
+#define PUMP_ML_PER_SEC 10.0f // 每秒10毫升，实际根据泵的规格调整
 
 //舵机参数
 #define CH_STEERING_SERVO   LEDC_CHANNEL_0
@@ -112,6 +120,10 @@ typedef struct {
 
 void motor_coordinated_control(void);
 
+void motor_coordinated_control_ui_http(uint32_t weight);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __MOTOR_H__

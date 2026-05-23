@@ -434,3 +434,32 @@ void motor_coordinated_control(void)
     step_rotate_turns(cmd.step_turns, DIR_CCW, 1000);
 }
 
+void motor_coordinated_control_ui_http(uint32_t weight)
+{
+    // 根据面粉重量计算各个电机的工作时间和步进电机的转数
+    motor_command_t cmd = {
+        .cycle_times = (weight + 49) / (DOUGH_G_PER_SEC * 10), // 粗略估算每10秒5克，向上取整
+        .on_time_ms = 10000,
+        .off_time_ms = 5000,
+        .pump_work_times_ms = 10000,
+        .grinder_work_times_ms = 10000,
+        .mixer_work_times_min = 1,
+        .step_turns = 1.0f
+    };
+    ESP_LOGI(TAG, "Coordinated (UI/HTTP): cycles=%u, pump=%lums, grinder=%lums, mixer=%lumin, step=%.1f turns",
+             cmd.cycle_times,
+             (unsigned long)cmd.pump_work_times_ms,
+             (unsigned long)cmd.grinder_work_times_ms,
+             (unsigned long)cmd.mixer_work_times_min,
+             (double)cmd.step_turns);
+
+    dough_esc_cycle_run(cmd.cycle_times, cmd.on_time_ms, cmd.off_time_ms);
+    pump_work(cmd.pump_work_times_ms);
+    grinder_work(cmd.grinder_work_times_ms);
+    servo_coordinated_control();
+    step_rotate_turns(cmd.step_turns, DIR_CW, 1000);
+    mixer_work(cmd.mixer_work_times_min);
+    step_rotate_turns(cmd.step_turns, DIR_CCW, 1000);
+}
+
+

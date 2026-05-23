@@ -3,33 +3,59 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
+#include "nvs_flash.h"
+#include "esp_event.h"
 #include "lcd.h"
 #include "touch.h"
 #include "lvgl_ui.h"
 #include "ui.h"
 #include "vars.h"
+#include "motor.h"
+#include "uart.h"
+#include "wifi.h"
+#include "http.h"
 
 static const char *TAG = "MAIN";
 
 extern "C" void app_main(void)
 {
-    /* 1. LCD 硬件初始化 */
+    /* ---- NVS / 系统基础 ---- */
+    nvs_flash_init();
+    esp_event_loop_create_default();
+
+    /* ---- 电机 ---- */
+    step_init();
+    ESP_LOGI(TAG, "Motor init done");
+
+    /* ---- 串口 ---- */
+    uart_init();
+    xTaskCreate(uart_command_task, "uart1_cmd", 4096, NULL, 10, NULL);
+    xTaskCreate(uart0_command_task, "uart0_cmd", 4096, NULL, 10, NULL);
+    ESP_LOGI(TAG, "UART init done");
+
+    /* ---- WiFi AP ---- */
+    wifi_init_softap();
+
+    /* ---- HTTP 服务器 ---- */
+    http_server_start();
+
+    /* ---- LCD ---- */
     bsp_lcd_init();
     ESP_LOGI(TAG, "LCD init done");
 
-    /* 2. 触摸初始化 */
+    /* ---- 触摸 ---- */
     ft6336u_touch_init();
 
-    /* 3. LVGL 初始化（注册 LCD + 触摸） */
+    /* ---- LVGL（注册 LCD + 触摸）---- */
     lvgl_ui_init();
 
-    /* 4. EEZ Studio UI 显示 */
+    /* ---- EEZ Studio UI ---- */
     lvgl_port_lock(0);
     vars_init();
     ui_init();
     lvgl_port_unlock();
 
-    ESP_LOGI(TAG, "System started, EEZ UI running");
+    ESP_LOGI(TAG, "System started, WiFi: dough_mixer / 12345678");
 
     while (1) {
         lvgl_port_lock(0);

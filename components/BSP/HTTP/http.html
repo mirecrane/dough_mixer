@@ -1,21 +1,3 @@
-<!--
-  ESP32 HTTP Server API 约定 (需在C端实现):
-
-    POST /api/start
-      → 调用 motor_coordinated_control(void)
-      → 返回: {"status":"ok","state":"kneading"}
-      → 建议: 在FreeRTOS任务中执行电机控制，HTTP handler立即返回
-
-    GET /api/status
-      → 返回电机当前状态
-      → {"state":"idle"|"kneading"|"fermenting"|"done"|"error"}
-      → motor_coordinated_control() 执行中返回 "kneading"
-      → 执行完毕后返回 "fermenting" 或 "done"
-
-    POST /api/stop
-      → 调用 motor_emergency_stop(void)
-      → 返回: {"status":"ok","state":"idle"}
--->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -31,6 +13,7 @@
             --card-bg: #ffffff;
             --text-primary: #3d3226;
             --text-secondary: #8b7b6b;
+            --text-muted: #b0a89b;
             --idle-color: #9ca3af;
             --kneading-color: #f59e0b;
             --kneading-glow: #fbbf24;
@@ -42,6 +25,8 @@
             --start-color: #f59e0b;
             --start-dark: #d97706;
             --start-glow: #fcd34d;
+            --accent-brown: #8b5e3c;
+            --accent-warm: #e8d5c4;
             --ring-bg: #e5e7eb;
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -53,6 +38,7 @@
             --radius-sm: 10px;
             --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-page: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -81,24 +67,23 @@
             overflow-x: hidden;
         }
 
-        /* 主容器 */
         .main-container {
             width: 100%;
             max-width: 420px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
         }
 
-        /* 顶部标题 */
         .header {
             text-align: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
+            transition: all var(--transition-page);
         }
         .header .icon-row {
             font-size: 36px;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             animation: float 3s ease-in-out infinite;
             display: inline-block;
         }
@@ -109,7 +94,7 @@
             letter-spacing: 0.02em;
         }
         .header .subtitle {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             font-weight: 400;
             letter-spacing: 0.04em;
@@ -126,51 +111,431 @@
             }
         }
 
-        /* 卡片 */
+        .page-indicator-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            padding: 4px 0;
+            flex-wrap: wrap;
+        }
+        .page-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #d1d5db;
+            transition: all var(--transition-smooth);
+            flex-shrink: 0;
+            cursor: default;
+        }
+        .page-dot.active {
+            background: var(--accent-brown);
+            box-shadow: 0 0 8px rgba(139, 94, 60, 0.45);
+            transform: scale(1.35);
+            width: 12px;
+            height: 12px;
+        }
+        .page-dot.done {
+            background: #c5b8a8;
+            box-shadow: none;
+        }
+        .page-dot.current {
+            animation: dotGlow 1.6s ease-in-out infinite;
+        }
+        @keyframes dotGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 6px rgba(139, 94, 60, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 16px rgba(139, 94, 60, 0.7);
+            }
+        }
+        .page-line {
+            width: 16px;
+            height: 2px;
+            border-radius: 1px;
+            background: #d1d5db;
+            flex-shrink: 0;
+            transition: all var(--transition-smooth);
+        }
+        .page-line.done {
+            background: #c5b8a8;
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: var(--radius-xl);
-            padding: 24px 20px 28px;
+            padding: 20px 18px 24px;
             width: 100%;
             box-shadow: var(--shadow-lg);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 22px;
+            gap: 18px;
             position: relative;
-            overflow: visible;
+            overflow: hidden;
             border: 1px solid rgba(0, 0, 0, 0.04);
-            transition: box-shadow var(--transition-smooth), border-color var(--transition-smooth);
+            transition: all var(--transition-page);
+            min-height: 340px;
         }
-
         .card.state-kneading {
             border-color: rgba(245, 158, 11, 0.2);
             box-shadow: var(--shadow-xl), 0 0 0 1px rgba(245, 158, 11, 0.08), 0 0 60px rgba(245, 158, 11, 0.08);
         }
-
         .card.state-fermenting {
             border-color: rgba(16, 185, 129, 0.2);
             box-shadow: var(--shadow-xl), 0 0 0 1px rgba(16, 185, 129, 0.08), 0 0 60px rgba(16, 185, 129, 0.06);
         }
-
-        .card.state-idle {
+        .card.state-idle-monitor {
             border-color: rgba(0, 0, 0, 0.04);
             box-shadow: var(--shadow-lg);
         }
 
-        /* 步骤指示器 */
+        .page-content {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity var(--transition-page), transform var(--transition-page);
+        }
+        .page-content.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .page-content.exit-left {
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .page-content.exit-right {
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .page-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            text-align: center;
+            margin-bottom: -6px;
+        }
+        .page-desc {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: -8px;
+            letter-spacing: 0.02em;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+        .options-grid.col2 {
+            grid-template-columns: 1fr 1fr;
+        }
+        .option-card {
+            background: #fafaf7;
+            border: 2px solid #e8e5df;
+            border-radius: var(--radius-lg);
+            padding: 18px 10px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all var(--transition-bounce);
+            text-align: center;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .option-card:active {
+            transform: scale(0.94);
+            transition: transform 0.1s ease;
+        }
+        .option-card.selected {
+            border-color: var(--accent-brown);
+            background: #fdf8f3;
+            box-shadow: 0 0 0 4px rgba(139, 94, 60, 0.08), 0 4px 16px rgba(139, 94, 60, 0.12);
+            transform: translateY(-2px);
+        }
+        .option-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+            background: var(--accent-brown);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .option-icon {
+            font-size: 2.2rem;
+            line-height: 1;
+            transition: transform var(--transition-bounce);
+        }
+        .option-card.selected .option-icon {
+            transform: scale(1.1);
+        }
+        .option-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+        }
+        .option-sub {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+        }
+
+        .time-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+        .time-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 14px 12px;
+            border-radius: var(--radius-md);
+            border: 2px solid #e8e5df;
+            background: #fafaf7;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-bounce);
+            text-align: center;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+        .time-btn:active {
+            transform: scale(0.94);
+            transition: transform 0.1s ease;
+        }
+        .time-btn.selected {
+            border-color: var(--accent-brown);
+            background: #fdf8f3;
+            box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.06), 0 3px 12px rgba(139, 94, 60, 0.1);
+            font-weight: 700;
+        }
+        .time-btn .time-icon {
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 3px;
+        }
+        .time-btn .time-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        .custom-time-input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            border: 2px solid #e8e5df;
+            background: #fafaf7;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: all var(--transition-smooth);
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .custom-time-input:focus {
+            outline: none;
+            border-color: var(--accent-brown);
+            box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.06);
+        }
+
+        .weight-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+        .weight-btn {
+            padding: 13px 18px;
+            border-radius: var(--radius-md);
+            border: 2px solid #e8e5df;
+            background: #fafaf7;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-bounce);
+            text-align: center;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 70px;
+        }
+        .weight-btn:active {
+            transform: scale(0.94);
+            transition: transform 0.1s ease;
+        }
+        .weight-btn.selected {
+            border-color: var(--accent-brown);
+            background: #fdf8f3;
+            box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.06), 0 3px 12px rgba(139, 94, 60, 0.1);
+            font-weight: 700;
+        }
+        .custom-weight-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            margin-top: 2px;
+        }
+        .custom-weight-input {
+            width: 100px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            border: 2px solid #e8e5df;
+            background: #fafaf7;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            transition: all var(--transition-smooth);
+            font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .custom-weight-input:focus {
+            outline: none;
+            border-color: var(--accent-brown);
+            box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.06);
+        }
+        .weight-unit {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .texture-options {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .texture-card {
+            flex: 1;
+            min-width: 80px;
+            max-width: 110px;
+            padding: 16px 8px 12px;
+            border-radius: var(--radius-lg);
+            border: 2px solid #e8e5df;
+            background: #fafaf7;
+            cursor: pointer;
+            transition: all var(--transition-bounce);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .texture-card:active {
+            transform: scale(0.93);
+            transition: transform 0.1s ease;
+        }
+        .texture-card.selected {
+            border-color: var(--accent-brown);
+            background: #fdf8f3;
+            box-shadow: 0 0 0 4px rgba(139, 94, 60, 0.06), 0 4px 16px rgba(139, 94, 60, 0.1);
+        }
+        .texture-card .texture-icon {
+            font-size: 2rem;
+        }
+        .texture-card .texture-label {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+        }
+        .texture-card .texture-desc {
+            font-size: 0.62rem;
+            color: var(--text-secondary);
+        }
+
+        .summary-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #fafaf7;
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            border: 1px solid #e8e5df;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0ece6;
+        }
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+        .summary-key {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+        .summary-val {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            text-align: right;
+        }
+        .summary-highlight {
+            color: var(--accent-brown);
+            font-weight: 800;
+        }
+
         .steps-row {
             display: flex;
             align-items: center;
             gap: 0;
             width: 100%;
-            max-width: 280px;
+            max-width: 260px;
             justify-content: center;
-            padding: 0 10px;
+            padding: 0 8px;
         }
         .step-dot {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background: #e5e7eb;
             transition: all var(--transition-smooth);
@@ -181,13 +546,13 @@
         }
         .step-dot.active-kneading {
             background: var(--kneading-color);
-            box-shadow: 0 0 14px var(--kneading-glow), 0 0 28px rgba(245, 158, 11, 0.35);
+            box-shadow: 0 0 12px var(--kneading-glow), 0 0 24px rgba(245, 158, 11, 0.35);
             animation: dotPulse 1.2s ease-in-out infinite;
             transform: scale(1.2);
         }
         .step-dot.active-fermenting {
             background: var(--fermenting-color);
-            box-shadow: 0 0 14px var(--fermenting-glow), 0 0 28px rgba(16, 185, 129, 0.35);
+            box-shadow: 0 0 12px var(--fermenting-glow), 0 0 24px rgba(16, 185, 129, 0.35);
             animation: dotPulse 2s ease-in-out infinite;
             transform: scale(1.2);
         }
@@ -199,14 +564,14 @@
         @keyframes dotPulse {
             0%,
             100% {
-                box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+                box-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
             }
             50% {
-                box-shadow: 0 0 22px currentColor, 0 0 40px currentColor;
+                box-shadow: 0 0 20px currentColor, 0 0 36px currentColor;
             }
         }
         .step-line {
-            width: 32px;
+            width: 28px;
             height: 3px;
             border-radius: 2px;
             background: #e5e7eb;
@@ -226,34 +591,33 @@
             display: flex;
             justify-content: space-between;
             width: 100%;
-            max-width: 280px;
+            max-width: 260px;
             padding: 0 2px;
-            margin-top: -14px;
+            margin-top: -12px;
         }
-        .step-label {
-            font-size: 0.65rem;
+        .step-label-sm {
+            font-size: 0.6rem;
             color: #c5c0b8;
             font-weight: 500;
             letter-spacing: 0.03em;
             transition: color var(--transition-smooth);
             text-align: center;
-            width: 40px;
+            width: 36px;
             flex-shrink: 0;
         }
-        .step-label.label-active {
+        .step-label-sm.label-active {
             color: var(--text-primary);
             font-weight: 700;
         }
-        .step-label.label-fermenting-active {
+        .step-label-sm.label-fermenting-active {
             color: #065f46;
             font-weight: 700;
         }
 
-        /* 圆形指示器容器 */
         .indicator-wrapper {
             position: relative;
-            width: clamp(170px, 48vw, 220px);
-            height: clamp(170px, 48vw, 220px);
+            width: clamp(150px, 40vw, 190px);
+            height: clamp(150px, 40vw, 190px);
             flex-shrink: 0;
         }
         .indicator-svg {
@@ -261,21 +625,18 @@
             height: 100%;
             transform: rotate(-90deg);
         }
-        /* 背景环 */
         .ring-bg {
             fill: none;
             stroke: #e9e5e0;
-            stroke-width: 10;
+            stroke-width: 9;
             transition: stroke var(--transition-smooth);
         }
-        /* 进度环 */
         .ring-progress {
             fill: none;
             stroke: var(--idle-color);
-            stroke-width: 10;
+            stroke-width: 9;
             stroke-linecap: round;
             stroke-dasharray: 565;
-            /* 2*PI*90 ≈ 565 */
             stroke-dashoffset: 0;
             transition: stroke var(--transition-smooth), stroke-dashoffset 0.6s ease;
             transform-origin: center;
@@ -297,16 +658,14 @@
         @keyframes ringPulse {
             0%,
             100% {
-                stroke-width: 10;
+                stroke-width: 9;
                 opacity: 0.7;
             }
             50% {
-                stroke-width: 14;
+                stroke-width: 13;
                 opacity: 1;
             }
         }
-
-        /* 圆形内部内容 */
         .indicator-inner {
             position: absolute;
             top: 50%;
@@ -315,48 +674,47 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             pointer-events: none;
             z-index: 5;
         }
         .indicator-icon {
-            font-size: 2.4rem;
+            font-size: 2rem;
             transition: all var(--transition-bounce);
             line-height: 1;
         }
         .indicator-state-text {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--text-primary);
             letter-spacing: 0.04em;
             transition: color var(--transition-smooth);
         }
         .indicator-timer {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             font-weight: 800;
             color: var(--text-primary);
             font-variant-numeric: tabular-nums;
             font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
             letter-spacing: 0.02em;
             transition: color var(--transition-smooth);
-            min-width: 70px;
+            min-width: 60px;
             text-align: center;
         }
         .indicator-timer.idle-timer {
             color: #c5c0b8;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 500;
             letter-spacing: 0.06em;
         }
 
-        /* 状态标签徽章 */
         .status-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 16px;
+            padding: 5px 14px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             letter-spacing: 0.03em;
             transition: all var(--transition-smooth);
@@ -385,22 +743,19 @@
             }
         }
 
-        /* 按钮区域 */
-        .buttons-area {
-            width: 100%;
+        .buttons-row {
             display: flex;
-            flex-direction: column;
-            gap: 14px;
-            margin-top: 4px;
+            gap: 10px;
+            width: 100%;
         }
         .btn {
-            width: 100%;
-            height: 56px;
+            flex: 1;
+            height: 50px;
             border: none;
             border-radius: var(--radius-lg);
-            font-size: 1.05rem;
+            font-size: 0.95rem;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.04em;
             cursor: pointer;
             transition: all var(--transition-smooth);
             position: relative;
@@ -410,70 +765,57 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            color: #fff;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+            gap: 8px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
         }
         .btn:active {
-            transform: scale(0.96);
+            transform: scale(0.95);
             transition: transform 0.1s ease;
         }
-        .btn::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-        .btn:active::after {
-            opacity: 1;
-        }
-
-        /* 开始和面按钮 */
-        .btn-start {
+        .btn-primary {
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 30%, #d97706 100%);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35), 0 2px 6px rgba(217, 119, 6, 0.25);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.3), 0 2px 6px rgba(217, 119, 6, 0.2);
             border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
         }
-        .btn-start::after {
-            background: rgba(0, 0, 0, 0.12);
-        }
-        .btn-start:active {
-            box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4), 0 1px 3px rgba(217, 119, 6, 0.3);
+        .btn-primary:active {
+            box-shadow: 0 3px 10px rgba(245, 158, 11, 0.4);
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
         }
-        .btn-start:disabled {
+        .btn-primary:disabled {
             background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             color: #9ca3af;
             text-shadow: none;
             cursor: not-allowed;
             border: 2px solid rgba(0, 0, 0, 0.03);
-            letter-spacing: 0.05em;
         }
-        .btn-start:disabled:active {
+        .btn-primary:disabled:active {
             transform: none;
         }
-        .btn-start .btn-icon {
-            font-size: 1.3rem;
-            transition: transform var(--transition-smooth);
+        .btn-secondary {
+            background: #fff;
+            border: 2px solid #e8e5df;
+            color: var(--text-primary);
+            text-shadow: none;
+            box-shadow: var(--shadow-sm);
         }
-        .btn-start:not(:disabled):hover .btn-icon {
-            transform: rotate(-15deg);
+        .btn-secondary:active {
+            background: #f5f2ed;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
         }
-
-        /* 紧急停止按钮 */
         .btn-stop {
             background: linear-gradient(135deg, #f87171 0%, #ef4444 20%, #dc2626 60%, #b91c1c 100%);
             box-shadow: 0 8px 28px rgba(239, 68, 68, 0.4), 0 3px 8px rgba(185, 28, 28, 0.3), 0 0 0 4px rgba(239, 68, 68, 0.08);
             border: 2px solid rgba(255, 255, 255, 0.25);
-            height: 64px;
-            font-size: 1.1rem;
+            color: #fff;
+            height: 58px;
+            font-size: 1rem;
             letter-spacing: 0.06em;
             animation: stopPulse 2.5s ease-in-out infinite;
             border-radius: var(--radius-lg);
+            width: 100%;
+            flex: none;
         }
         @keyframes stopPulse {
             0%,
@@ -484,34 +826,25 @@
                 box-shadow: 0 8px 32px rgba(239, 68, 68, 0.55), 0 3px 10px rgba(185, 28, 28, 0.4), 0 0 0 12px rgba(239, 68, 68, 0);
             }
         }
-        .btn-stop::after {
-            background: rgba(0, 0, 0, 0.15);
-        }
         .btn-stop:active {
-            box-shadow: 0 3px 14px rgba(239, 68, 68, 0.5), 0 1px 4px rgba(185, 28, 28, 0.4), 0 0 0 2px rgba(239, 68, 68, 0.15);
+            box-shadow: 0 3px 14px rgba(239, 68, 68, 0.5);
             background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #7f1d1d 100%);
-            transform: scale(0.95);
+            transform: scale(0.94);
         }
         .btn-stop:disabled {
             background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             color: #9ca3af;
             text-shadow: none;
             cursor: not-allowed;
             border: 2px solid rgba(0, 0, 0, 0.03);
             animation: none;
-            letter-spacing: 0.05em;
         }
         .btn-stop:disabled:active {
             transform: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-        .btn-stop .btn-icon {
-            font-size: 1.4rem;
-            transition: transform var(--transition-smooth);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
-        /* Toast提示 */
         .toast {
             position: fixed;
             top: 30px;
@@ -521,7 +854,7 @@
             color: #fff;
             padding: 12px 24px;
             border-radius: 25px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             letter-spacing: 0.03em;
             z-index: 100;
@@ -529,6 +862,8 @@
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             white-space: nowrap;
+            max-width: 90vw;
+            text-align: center;
         }
         .toast.show {
             transform: translateX(-50%) translateY(0);
@@ -538,136 +873,299 @@
             box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
         }
 
-        /* 响应式微调 */
         @media (max-width: 360px) {
             .card {
-                padding: 18px 14px 22px;
-                gap: 16px;
+                padding: 16px 12px 18px;
+                gap: 12px;
                 border-radius: var(--radius-lg);
+                min-height: 300px;
             }
             .btn {
-                height: 48px;
-                font-size: 0.95rem;
+                height: 44px;
+                font-size: 0.85rem;
                 border-radius: var(--radius-md);
             }
             .btn-stop {
-                height: 56px;
-                font-size: 1rem;
-                border-radius: var(--radius-md);
+                height: 50px;
+                font-size: 0.9rem;
             }
             .indicator-wrapper {
-                width: clamp(140px, 42vw, 170px);
-                height: clamp(140px, 42vw, 170px);
+                width: clamp(130px, 38vw, 150px);
+                height: clamp(130px, 38vw, 150px);
             }
             .indicator-icon {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
             }
             .indicator-timer {
-                font-size: 1.3rem;
+                font-size: 1.2rem;
             }
-            .step-line {
-                width: 22px;
+            .options-grid {
+                gap: 7px;
             }
-            .step-label {
-                font-size: 0.58rem;
-                width: 32px;
+            .option-card {
+                padding: 12px 6px 10px;
+                gap: 5px;
+            }
+            .option-icon {
+                font-size: 1.6rem;
+            }
+            .option-label {
+                font-size: 0.73rem;
+            }
+            .page-dot {
+                width: 8px;
+                height: 8px;
+            }
+            .page-dot.active {
+                width: 10px;
+                height: 10px;
+            }
+            .page-line {
+                width: 12px;
+            }
+            .time-btn {
+                padding: 10px 8px;
+                font-size: 0.75rem;
+            }
+            .weight-btn {
+                padding: 10px 14px;
+                font-size: 0.78rem;
             }
         }
         @media (min-width: 420px) {
             .btn {
-                height: 60px;
-                font-size: 1.1rem;
+                height: 54px;
+                font-size: 1rem;
             }
             .btn-stop {
-                height: 70px;
-                font-size: 1.15rem;
+                height: 62px;
+                font-size: 1.05rem;
             }
             .indicator-wrapper {
-                width: 220px;
-                height: 220px;
+                width: 190px;
+                height: 190px;
             }
             .indicator-icon {
-                font-size: 2.8rem;
+                font-size: 2.4rem;
             }
             .indicator-timer {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
+            }
+            .card {
+                padding: 24px 22px 28px;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- 主容器 -->
     <div class="main-container">
-        <!-- 头部 -->
-        <div class="header">
-            <span class="icon-row">🍞</span>
+        <div class="header" id="headerArea">
+            <span class="icon-row" id="headerIcon">🍞</span>
             <h1>和面机控制面板</h1>
             <p class="subtitle">Dough Mixer · 智能掌控</p>
         </div>
 
-        <!-- 卡片 -->
-        <div class="card state-idle" id="mainCard">
-            <!-- 步骤指示器 -->
-            <div class="steps-row" id="stepsRow">
-                <div class="step-dot" id="stepDot1"></div>
-                <div class="step-line" id="stepLine1"></div>
-                <div class="step-dot" id="stepDot2"></div>
-                <div class="step-line" id="stepLine2"></div>
-                <div class="step-dot" id="stepDot3"></div>
-            </div>
-            <div class="step-label-row">
-                <span class="step-label" id="stepLabel1">和面</span>
-                <span class="step-label" id="stepLabel2">发酵</span>
-                <span class="step-label" id="stepLabel3">完成</span>
-            </div>
+        <div class="page-indicator-row" id="pageIndicatorRow">
+            <span class="page-dot active current" data-page="1"></span>
+            <span class="page-line" data-line="1"></span>
+            <span class="page-dot" data-page="2"></span>
+            <span class="page-line" data-line="2"></span>
+            <span class="page-dot" data-page="3"></span>
+            <span class="page-line" data-line="3"></span>
+            <span class="page-dot" data-page="4"></span>
+            <span class="page-line" data-line="4"></span>
+            <span class="page-dot" data-page="5"></span>
+            <span class="page-line" data-line="5"></span>
+            <span class="page-dot" data-page="6"></span>
+        </div>
 
-            <!-- 圆形指示器 -->
-            <div class="indicator-wrapper">
-                <svg class="indicator-svg" viewBox="0 0 200 200">
-                    <circle class="ring-bg" cx="100" cy="100" r="90"/>
-                    <circle class="ring-progress" id="ringProgress" cx="100" cy="100" r="90"
-                    stroke-dasharray="565" stroke-dashoffset="0"/>
-                </svg>
-                <div class="indicator-inner">
-                    <span class="indicator-icon" id="indicatorIcon">💤</span>
-                    <span class="indicator-state-text" id="indicatorStateText">空闲中</span>
-                    <span class="indicator-timer idle-timer" id="indicatorTimer">--:--</span>
+        <div class="card state-idle" id="mainCard">
+
+            <!-- 第1页：选择面食种类 -->
+            <div class="page-content active" data-page="1" id="page1">
+                <div class="page-title">🍽 选择面食种类</div>
+                <div class="page-desc">请选择您想要制作的面食</div>
+                <div class="options-grid" id="foodTypeGrid">
+                    <div class="option-card" data-value="dumpling" onclick="selectFoodType('dumpling', this)">
+                        <span class="option-icon">🥟</span>
+                        <span class="option-label">饺子</span>
+                        <span class="option-sub">醒面约30分钟</span>
+                    </div>
+                    <div class="option-card" data-value="bread" onclick="selectFoodType('bread', this)">
+                        <span class="option-icon">🍞</span>
+                        <span class="option-label">面包</span>
+                        <span class="option-sub">发酵约60分钟</span>
+                    </div>
+                    <div class="option-card" data-value="mantou" onclick="selectFoodType('mantou', this)">
+                        <span class="option-icon">🥠</span>
+                        <span class="option-label">馒头</span>
+                        <span class="option-sub">发酵约40分钟</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- 状态徽章 -->
-            <span class="status-badge idle-badge" id="statusBadge">● 空闲中</span>
-
-            <!-- 按钮区域 -->
-            <div class="buttons-area">
-                <button class="btn btn-start" id="btnStart" aria-label="开始和面">
-                    <span class="btn-icon">🥖</span> 开始和面
-                </button>
-                <button class="btn btn-stop" id="btnStop" disabled aria-label="紧急停止">
-                    <span class="btn-icon">⏹</span> 紧急停止
-                </button>
+            <!-- 第2页：选择食用时间 -->
+            <div class="page-content" data-page="2" id="page2">
+                <div class="page-title">🕐 选择食用时间</div>
+                <div class="page-desc">您计划什么时间享用？</div>
+                <div class="time-options" id="timeOptions">
+                    <button class="time-btn" data-value="breakfast" onclick="selectTime('breakfast', this)">
+                        <span class="time-icon">🌅</span>早餐<span class="time-label">约7:00</span>
+                    </button>
+                    <button class="time-btn" data-value="lunch" onclick="selectTime('lunch', this)">
+                        <span class="time-icon">☀️</span>午餐<span class="time-label">约12:00</span>
+                    </button>
+                    <button class="time-btn" data-value="dinner" onclick="selectTime('dinner', this)">
+                        <span class="time-icon">🌙</span>晚餐<span class="time-label">约18:00</span>
+                    </button>
+                    <button class="time-btn" data-value="custom" onclick="selectTime('custom', this)">
+                        <span class="time-icon">⏰</span>自定义<span class="time-label">自选时间</span>
+                    </button>
+                </div>
+                <input type="time" class="custom-time-input" id="customTimeInput" value="12:00"
+                onchange="onCustomTimeChange()" style="display:none;">
             </div>
+
+            <!-- 第3页：选择面团重量 -->
+            <div class="page-content" data-page="3" id="page3">
+                <div class="page-title">⚖ 选择面团重量</div>
+                <div class="page-desc">请选择面团总重量（克）</div>
+                <div class="weight-options" id="weightOptions">
+                    <button class="weight-btn" data-value="200" onclick="selectWeight('200', this)">200g</button>
+                    <button class="weight-btn" data-value="300" onclick="selectWeight('300', this)">300g</button>
+                    <button class="weight-btn" data-value="500" onclick="selectWeight('500', this)">500g</button>
+                    <button class="weight-btn" data-value="800" onclick="selectWeight('800', this)">800g</button>
+                    <button class="weight-btn" data-value="1000" onclick="selectWeight('1000', this)">1000g</button>
+                    <button class="weight-btn" data-value="custom" onclick="selectWeight('custom', this)">自定义</button>
+                </div>
+                <div class="custom-weight-wrapper" id="customWeightWrapper" style="display:none;">
+                    <input type="number" class="custom-weight-input" id="customWeightInput" value="250" min="50" max="5000" step="10" onchange="onCustomWeightChange()">
+                    <span class="weight-unit">g</span>
+                </div>
+            </div>
+
+            <!-- 第4页：选择口感偏好 -->
+            <div class="page-content" data-page="4" id="page4">
+                <div class="page-title">👅 选择口感偏好</div>
+                <div class="page-desc">您喜欢什么样的面团口感？</div>
+                <div class="texture-options" id="textureOptions">
+                    <div class="texture-card" data-value="soft" onclick="selectTexture('soft', this)">
+                        <span class="texture-icon">🍰</span>
+                        <span class="texture-label">软糯</span>
+                        <span class="texture-desc">适合老人小孩</span>
+                    </div>
+                    <div class="texture-card" data-value="medium" onclick="selectTexture('medium', this)">
+                        <span class="texture-icon">🥖</span>
+                        <span class="texture-label">适中</span>
+                        <span class="texture-desc">推荐选择</span>
+                    </div>
+                    <div class="texture-card" data-value="chewy" onclick="selectTexture('chewy', this)">
+                        <span class="texture-icon">🥯</span>
+                        <span class="texture-label">有嚼劲</span>
+                        <span class="texture-desc">筋道口感</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第5页：确认汇总 -->
+            <div class="page-content" data-page="5" id="page5">
+                <div class="page-title">📋 确认参数</div>
+                <div class="page-desc">请确认以下设置，无误后开始和面</div>
+                <div class="summary-list" id="summaryList">
+                    <div class="summary-item">
+                        <span class="summary-key">面食种类</span>
+                        <span class="summary-val" id="summaryFood">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-key">食用时间</span>
+                        <span class="summary-val" id="summaryTime">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-key">面团重量</span>
+                        <span class="summary-val summary-highlight" id="summaryWeight">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-key">口感偏好</span>
+                        <span class="summary-val" id="summaryTexture">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-key">预计总耗时</span>
+                        <span class="summary-val" id="summaryDuration">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第6页：运行监控 -->
+            <div class="page-content" data-page="6" id="page6">
+                <div class="steps-row" id="stepsRow">
+                    <div class="step-dot" id="stepDot1"></div>
+                    <div class="step-line" id="stepLine1"></div>
+                    <div class="step-dot" id="stepDot2"></div>
+                    <div class="step-line" id="stepLine2"></div>
+                    <div class="step-dot" id="stepDot3"></div>
+                </div>
+                <div class="step-label-row">
+                    <span class="step-label-sm" id="stepLabel1">和面</span>
+                    <span class="step-label-sm" id="stepLabel2">发酵</span>
+                    <span class="step-label-sm" id="stepLabel3">完成</span>
+                </div>
+
+                <div class="indicator-wrapper">
+                    <svg class="indicator-svg" viewBox="0 0 200 200">
+                        <circle class="ring-bg" cx="100" cy="100" r="90"/>
+                        <circle class="ring-progress" id="ringProgress" cx="100" cy="100" r="90"
+                        stroke-dasharray="565" stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="indicator-inner">
+                        <span class="indicator-icon" id="indicatorIcon">💤</span>
+                        <span class="indicator-state-text" id="indicatorStateText">就绪</span>
+                        <span class="indicator-timer idle-timer" id="indicatorTimer">--:--</span>
+                    </div>
+                </div>
+
+                <span class="status-badge idle-badge" id="statusBadge">● 等待启动</span>
+            </div>
+        </div>
+
+        <div class="buttons-row" id="buttonsRow">
+            <button class="btn btn-secondary" id="btnPrev" style="display:none;" onclick="goToPrevPage()">
+                ← 上一步
+            </button>
+            <button class="btn btn-primary" id="btnNext" onclick="goToNextPage()">
+                下一步 →
+            </button>
+            <button class="btn btn-stop" id="btnStop" style="display:none;" disabled onclick="emergencyStop()">
+                ⏹ 紧急停止
+            </button>
+            <button class="btn btn-primary" id="btnRestart" style="display:none;" onclick="restartAll()">
+                🔄 重新开始
+            </button>
         </div>
     </div>
 
     <script>
         (function() {
-            // ============ DOM元素 ============
             const mainCard = document.getElementById('mainCard');
+            const headerIcon = document.getElementById('headerIcon');
+            const pageIndicatorRow = document.getElementById('pageIndicatorRow');
+            const buttonsRow = document.getElementById('buttonsRow');
+            const btnPrev = document.getElementById('btnPrev');
+            const btnNext = document.getElementById('btnNext');
+            const btnStop = document.getElementById('btnStop');
+            const btnRestart = document.getElementById('btnRestart');
+            const toast = document.getElementById('toast');
+            const customTimeInput = document.getElementById('customTimeInput');
+            const customWeightWrapper = document.getElementById('customWeightWrapper');
+            const customWeightInput = document.getElementById('customWeightInput');
+
             const ringProgress = document.getElementById('ringProgress');
             const indicatorIcon = document.getElementById('indicatorIcon');
             const indicatorStateText = document.getElementById('indicatorStateText');
             const indicatorTimer = document.getElementById('indicatorTimer');
             const statusBadge = document.getElementById('statusBadge');
-            const btnStart = document.getElementById('btnStart');
-            const btnStop = document.getElementById('btnStop');
-            const toast = document.getElementById('toast');
-
-            // 步骤元素
             const stepDot1 = document.getElementById('stepDot1');
             const stepDot2 = document.getElementById('stepDot2');
             const stepDot3 = document.getElementById('stepDot3');
@@ -677,17 +1175,30 @@
             const stepLabel2 = document.getElementById('stepLabel2');
             const stepLabel3 = document.getElementById('stepLabel3');
 
-            // ============ 状态管理 ============
-            const FERMENTING_DURATION = 600; // 发酵时长10分钟
+            let currentPage = 1;
+            const totalPages = 6;
+            let isTransitioning = false;
 
-            let currentState = 'idle'; // 'idle' | 'kneading' | 'fermenting'
+            let selectedFoodType = null;
+            let selectedTime = null;
+            let customTimeValue = '12:00';
+            let selectedWeight = null;
+            let customWeightValue = 250;
+            let selectedTexture = null;
+
+            let machineState = 'idle';
             let elapsedSeconds = 0;
             let timerInterval = null;
             let stateTimeout = null;
-            let currentTotalDuration = 0;
             let pollingInterval = null;
+            let fermentingDuration = 600;
 
-            // ============ 音效 ============
+            const fermentingDurations = {
+                'dumpling': 1800,
+                'bread': 3600,
+                'mantou': 2400
+            };
+
             function playBeep(frequency, duration, type = 'sine') {
                 try {
                     const ctx = new(window.AudioContext || window.webkitAudioContext)();
@@ -695,29 +1206,26 @@
                     const gain = ctx.createGain();
                     osc.type = type;
                     osc.frequency.setValueAtTime(frequency, ctx.currentTime);
-                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.07, ctx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
                     osc.connect(gain);
                     gain.connect(ctx.destination);
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + duration);
-                    // 清理
-                    setTimeout(() => {
-                        try { ctx.close(); } catch (e) { /* ignore */ }
-                    }, duration + 200);
-                } catch (e) {
-                    // 静默处理不支持的情况
-                }
+                    setTimeout(() => { try { ctx.close(); } catch (e) {} }, duration + 200);
+                } catch (e) {}
             }
+
+            function soundSelect() { playBeep(600, 0.08, 'sine'); }
+
+            function soundPageChange() { playBeep(500, 0.1, 'sine'); }
 
             function soundStateChange() {
                 playBeep(800, 0.12, 'sine');
                 setTimeout(() => playBeep(600, 0.1, 'sine'), 100);
             }
 
-            function soundStop() {
-                playBeep(200, 0.35, 'square');
-            }
+            function soundStop() { playBeep(200, 0.35, 'square'); }
 
             function soundComplete() {
                 playBeep(1000, 0.1, 'sine');
@@ -725,14 +1233,16 @@
                 setTimeout(() => playBeep(1400, 0.18, 'sine'), 240);
             }
 
-            // ============ Toast ============
+            function vibrate(pattern) {
+                try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+            }
+
             let toastTimeout = null;
 
             function showToast(message, isWarning = false) {
                 if (toastTimeout) clearTimeout(toastTimeout);
                 toast.textContent = message;
                 toast.className = 'toast' + (isWarning ? ' warning-toast' : '');
-                // 强制回流后添加show类
                 void toast.offsetWidth;
                 toast.classList.add('show');
                 toastTimeout = setTimeout(() => {
@@ -741,20 +1251,13 @@
                 }, 1800);
             }
 
-            // ============ 触觉反馈 ============
-            function vibrate(pattern) {
-                try {
-                    if (navigator.vibrate) {
-                        navigator.vibrate(pattern);
-                    }
-                } catch (e) {
-                    // 静默处理
+            async function apiCall(endpoint, method = 'GET', body = null) {
+                const opts = { method };
+                if (body) {
+                    opts.headers = { 'Content-Type': 'application/json' };
+                    opts.body = JSON.stringify(body);
                 }
-            }
-
-            // ============ API通信 ============
-            async function apiCall(endpoint, method = 'GET') {
-                const res = await fetch(endpoint, { method });
+                const res = await fetch(endpoint, opts);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.json();
             }
@@ -772,11 +1275,9 @@
                             clearInterval(pollingInterval);
                             pollingInterval = null;
                             if (data.state === 'error') showToast('⚠ 运行异常', true);
-                            resetToIdle();
+                            resetMachineToIdle();
                         }
-                    } catch (e) {
-                        // 网络错误，继续轮询
-                    }
+                    } catch (e) {}
                 }, 1000);
             }
 
@@ -787,45 +1288,440 @@
                 }
             }
 
-            // ============ UI更新 ============
-            function updateUI() {
-                // 重置所有类
+            function clearAllTimers() {
+                if (timerInterval) { clearInterval(timerInterval);
+                    timerInterval = null; }
+                if (stateTimeout) { clearTimeout(stateTimeout);
+                    stateTimeout = null; }
+                if (pollingInterval) { clearInterval(pollingInterval);
+                    pollingInterval = null; }
+            }
+
+            function getPageElement(pageNum) {
+                return document.getElementById('page' + pageNum);
+            }
+
+            function updatePageIndicator() {
+                const dots = pageIndicatorRow.querySelectorAll('.page-dot');
+                const lines = pageIndicatorRow.querySelectorAll('.page-line');
+                dots.forEach((dot, i) => {
+                    const page = i + 1;
+                    dot.classList.remove('active', 'current', 'done');
+                    if (page === currentPage) {
+                        dot.classList.add('active', 'current');
+                    } else if (page < currentPage) {
+                        dot.classList.add('done');
+                    }
+                });
+                lines.forEach((line, i) => {
+                    line.classList.toggle('done', i + 1 < currentPage);
+                });
+            }
+
+            function updateButtons() {
+                btnPrev.style.display = currentPage > 1 ? 'flex' : 'none';
+                btnNext.style.display = (currentPage < totalPages && currentPage !== 6) ? 'flex' : 'none';
+                btnStop.style.display = currentPage === 6 ? 'flex' : 'none';
+                btnRestart.style.display = 'none';
+
+                if (currentPage === 5) {
+                    btnNext.textContent = '🚀 开始和面';
+                    btnNext.style.display = 'flex';
+                } else if (currentPage < 5) {
+                    btnNext.textContent = '下一步 →';
+                    btnNext.style.display = 'flex';
+                }
+
+                if (currentPage === 6) {
+                    btnNext.style.display = 'none';
+                    if (machineState === 'idle') {
+                        btnStop.disabled = true;
+                        btnStop.style.display = 'flex';
+                        btnRestart.style.display = 'flex';
+                    } else {
+                        btnStop.disabled = false;
+                        btnStop.style.display = 'flex';
+                        btnRestart.style.display = 'none';
+                    }
+                }
+            }
+
+            function updateHeaderForPage() {
+                const icons = ['🍞', '🕐', '⚖', '👅', '📋', '🔧'];
+                headerIcon.textContent = icons[currentPage - 1] || '🍞';
+            }
+
+            function switchPage(fromPage, toPage) {
+                if (isTransitioning) return;
+                if (toPage < 1 || toPage > totalPages) return;
+                if (toPage === 6 && machineState === 'idle' && fromPage !== 5) {
+                    showToast('请先确认参数再启动', true);
+                    return;
+                }
+                if (machineState !== 'idle' && toPage !== 6 && currentPage === 6) {
+                    showToast('运行中，请先停止', true);
+                    return;
+                }
+
+                isTransitioning = true;
+                const oldPageEl = getPageElement(fromPage);
+                const newPageEl = getPageElement(toPage);
+
+                if (oldPageEl) {
+                    const exitClass = toPage > fromPage ? 'exit-left' : 'exit-right';
+                    oldPageEl.classList.add(exitClass);
+                    oldPageEl.classList.remove('active');
+                }
+
+                setTimeout(() => {
+                    if (oldPageEl) {
+                        oldPageEl.classList.remove('exit-left', 'exit-right');
+                        oldPageEl.style.display = 'none';
+                    }
+                    if (newPageEl) {
+                        newPageEl.style.display = 'flex';
+                        newPageEl.style.opacity = '0';
+                        newPageEl.style.transform = 'translateY(12px)';
+                        void newPageEl.offsetWidth;
+                        newPageEl.style.opacity = '1';
+                        newPageEl.style.transform = 'translateY(0)';
+                        newPageEl.classList.add('active');
+                    }
+                    currentPage = toPage;
+                    updatePageIndicator();
+                    updateButtons();
+                    updateHeaderForPage();
+                    updateCardStyle();
+                    if (toPage === 5) updateSummary();
+                    if (toPage === 6 && machineState === 'idle') updateMonitorUI();
+                    isTransitioning = false;
+                    soundPageChange();
+                }, 200);
+            }
+
+            function goToNextPage() {
+                if (isTransitioning) return;
+                if (currentPage === 6) return;
+
+                if (!validateCurrentPage()) return;
+
+                if (currentPage === 5) {
+                    startMachineFromPage5();
+                    return;
+                }
+
+                const nextPage = currentPage + 1;
+                if (nextPage <= totalPages) {
+                    switchPage(currentPage, nextPage);
+                }
+            }
+
+            function goToPrevPage() {
+                if (isTransitioning) return;
+                if (machineState !== 'idle' && currentPage === 6) {
+                    showToast('运行中，请先停止', true);
+                    return;
+                }
+                const prevPage = currentPage - 1;
+                if (prevPage >= 1) {
+                    switchPage(currentPage, prevPage);
+                }
+            }
+
+            function validateCurrentPage() {
+                switch (currentPage) {
+                    case 1:
+                        if (!selectedFoodType) {
+                            showToast('请选择一种面食', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        return true;
+                    case 2:
+                        if (!selectedTime) {
+                            showToast('请选择食用时间', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        if (selectedTime === 'custom' && !customTimeValue) {
+                            showToast('请设置自定义时间', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        return true;
+                    case 3:
+                        if (!selectedWeight) {
+                            showToast('请选择面团重量', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        if (selectedWeight === 'custom' && (!customWeightValue || customWeightValue < 50)) {
+                            showToast('请输入有效重量（≥50g）', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        return true;
+                    case 4:
+                        if (!selectedTexture) {
+                            showToast('请选择口感偏好', true);
+                            vibrate([50]);
+                            return false;
+                        }
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+
+            function updateCardStyle() {
+                mainCard.classList.remove('state-kneading', 'state-fermenting', 'state-idle-monitor');
+                if (currentPage === 6) {
+                    if (machineState === 'kneading') mainCard.classList.add('state-kneading');
+                    else if (machineState === 'fermenting') mainCard.classList.add('state-fermenting');
+                    else mainCard.classList.add('state-idle-monitor');
+                }
+            }
+
+            function selectFoodType(value, el) {
+                if (currentPage !== 1 || isTransitioning) return;
+                selectedFoodType = value;
+                document.querySelectorAll('#foodTypeGrid .option-card').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+                soundSelect();
+                vibrate([15]);
+                fermentingDuration = fermentingDurations[value] || 600;
+                // 不再自动跳转，需手动点击下一步
+            }
+
+            function selectTime(value, el) {
+                if (currentPage !== 2 || isTransitioning) return;
+                selectedTime = value;
+                document.querySelectorAll('#timeOptions .time-btn').forEach(b => b.classList.remove('selected'));
+                el.classList.add('selected');
+                if (value === 'custom') {
+                    customTimeInput.style.display = 'block';
+                    customTimeInput.focus();
+                } else {
+                    customTimeInput.style.display = 'none';
+                }
+                soundSelect();
+                vibrate([15]);
+            }
+
+            function onCustomTimeChange() {
+                customTimeValue = customTimeInput.value;
+            }
+
+            function selectWeight(value, el) {
+                if (currentPage !== 3 || isTransitioning) return;
+                selectedWeight = value;
+                document.querySelectorAll('#weightOptions .weight-btn').forEach(b => b.classList.remove('selected'));
+                el.classList.add('selected');
+                if (value === 'custom') {
+                    customWeightWrapper.style.display = 'flex';
+                    customWeightInput.focus();
+                } else {
+                    customWeightWrapper.style.display = 'none';
+                }
+                soundSelect();
+                vibrate([15]);
+            }
+
+            function onCustomWeightChange() {
+                customWeightValue = parseInt(customWeightInput.value) || 250;
+            }
+
+            function selectTexture(value, el) {
+                if (currentPage !== 4 || isTransitioning) return;
+                selectedTexture = value;
+                document.querySelectorAll('#textureOptions .texture-card').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+                soundSelect();
+                vibrate([15]);
+            }
+
+            function updateSummary() {
+                const foodMap = { 'dumpling': '🥟 饺子', 'bread': '🍞 面包', 'mantou': '🥠 馒头' };
+                const timeMap = { 'breakfast': '🌅 早餐 (约7:00)', 'lunch': '☀️ 午餐 (约12:00)', 'dinner': '🌙 晚餐 (约18:00)',
+                    'custom': '⏰ 自定义 ' + customTimeValue };
+                const textureMap = { 'soft': '🍰 软糯', 'medium': '🥖 适中', 'chewy': '🥯 有嚼劲' };
+                const durationMap = { 'dumpling': '约35分钟', 'bread': '约65分钟', 'mantou': '约45分钟' };
+
+                document.getElementById('summaryFood').textContent = foodMap[selectedFoodType] || '-';
+                document.getElementById('summaryTime').textContent = timeMap[selectedTime] || '-';
+                const weightDisplay = selectedWeight === 'custom' ? customWeightValue + 'g' : (selectedWeight ? selectedWeight +
+                    'g' : '-');
+                document.getElementById('summaryWeight').textContent = weightDisplay;
+                document.getElementById('summaryTexture').textContent = textureMap[selectedTexture] || '-';
+                document.getElementById('summaryDuration').textContent = durationMap[selectedFoodType] || '-';
+            }
+
+            async function startMachineFromPage5() {
+                if (!validateCurrentPage()) return;
+                if (machineState !== 'idle') {
+                    showToast('机器正在运行中', true);
+                    return;
+                }
+
+                switchPage(currentPage, 6);
+                setTimeout(async () => {
+                    await startKneading();
+                }, 400);
+            }
+
+            async function startKneading() {
+                if (machineState !== 'idle') return;
+                clearAllTimers();
+                stopPolling();
+                machineState = 'kneading';
+                elapsedSeconds = 0;
+                updateMonitorUI();
+                updateButtons();
+                updateCardStyle();
+                soundStateChange();
+                vibrate([30, 50, 30]);
+                showToast('🔔 和面机开始运转');
+
+                const weightVal = selectedWeight === 'custom' ? customWeightValue : parseInt(selectedWeight);
+                try {
+                    const data = await apiCall('/api/start', 'POST', { weight: weightVal });
+                    if (data.status !== 'ok') throw new Error('启动失败');
+                } catch (e) {
+                    showToast('⚠ 无法连接设备', true);
+                    resetMachineToIdle();
+                    return;
+                }
+
+                timerInterval = setInterval(() => {
+                    elapsedSeconds++;
+                    updateTimerDisplay();
+                }, 1000);
+
+                startPolling();
+            }
+
+            function startFermenting() {
+                clearAllTimers();
+                machineState = 'fermenting';
+                elapsedSeconds = 0;
+                updateMonitorUI();
+                updateButtons();
+                updateCardStyle();
+                soundStateChange();
+                vibrate([50, 30, 50]);
+                showToast('🫧 进入发酵阶段');
+
+                timerInterval = setInterval(() => {
+                    elapsedSeconds++;
+                    updateTimerDisplay();
+                    updateFermentingProgress();
+                    if (elapsedSeconds >= fermentingDuration) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        completeProcess();
+                    }
+                }, 1000);
+
+                stateTimeout = setTimeout(() => {
+                    if (machineState === 'fermenting') {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        completeProcess();
+                    }
+                }, fermentingDuration * 1000 + 500);
+            }
+
+            function completeProcess() {
+                clearAllTimers();
+                machineState = 'done';
+                updateMonitorUIComplete();
+                updateButtons();
+                updateCardStyle();
+                soundComplete();
+                vibrate([100, 50, 100, 50, 200]);
+                showToast('🎉 面团处理完成！');
+                btnRestart.style.display = 'flex';
+                btnStop.style.display = 'none';
+                btnNext.style.display = 'none';
+            }
+
+            async function emergencyStop() {
+                if (machineState === 'idle') return;
+                clearAllTimers();
+                stopPolling();
+                try { await apiCall('/api/stop', 'POST'); } catch (e) {}
+                machineState = 'idle';
+                elapsedSeconds = 0;
+                updateMonitorUI();
+                updateButtons();
+                updateCardStyle();
+                soundStop();
+                vibrate([200, 80, 200]);
+                showToast('🛑 已紧急停止！', true);
+                btnRestart.style.display = 'flex';
+                btnStop.style.display = 'flex';
+                btnStop.disabled = true;
+            }
+
+            function resetMachineToIdle() {
+                clearAllTimers();
+                machineState = 'idle';
+                elapsedSeconds = 0;
+                updateMonitorUI();
+                updateButtons();
+                updateCardStyle();
+            }
+
+            function restartAll() {
+                clearAllTimers();
+                stopPolling();
+                machineState = 'idle';
+                elapsedSeconds = 0;
+                selectedFoodType = null;
+                selectedTime = null;
+                customTimeValue = '12:00';
+                selectedWeight = null;
+                customWeightValue = 250;
+                selectedTexture = null;
+                fermentingDuration = 600;
+                document.querySelectorAll('.option-card.selected, .time-btn.selected, .weight-btn.selected, .texture-card.selected')
+                    .forEach(el => el.classList.remove('selected'));
+                customTimeInput.style.display = 'none';
+                customWeightWrapper.style.display = 'none';
+                customTimeInput.value = '12:00';
+                customWeightInput.value = '250';
+                switchPage(currentPage, 1);
+                updateMonitorUI();
+                updateButtons();
+                updateCardStyle();
+                mainCard.classList.remove('state-kneading', 'state-fermenting', 'state-idle-monitor');
+                showToast('🔄 已重置，请重新设置');
+            }
+
+            function updateMonitorUI() {
                 ringProgress.classList.remove('spinning', 'pulsing');
-                mainCard.classList.remove('state-idle', 'state-kneading', 'state-fermenting');
+                mainCard.classList.remove('state-kneading', 'state-fermenting', 'state-idle-monitor');
                 statusBadge.classList.remove('idle-badge', 'kneading-badge', 'fermenting-badge');
                 indicatorTimer.classList.remove('idle-timer');
+                [stepDot1, stepDot2, stepDot3].forEach(d => d.classList.remove('active-kneading', 'active-fermenting',
+                    'done'));
+                [stepLine1, stepLine2].forEach(l => l.classList.remove('active-line', 'fermenting-line'));
+                [stepLabel1, stepLabel2, stepLabel3].forEach(l => l.classList.remove('label-active',
+                    'label-fermenting-active'));
 
-                // 重置步骤
-                [stepDot1, stepDot2, stepDot3].forEach(d => {
-                    d.classList.remove('active-kneading', 'active-fermenting', 'done');
-                });
-                [stepLine1, stepLine2].forEach(l => {
-                    l.classList.remove('active-line', 'fermenting-line');
-                });
-                [stepLabel1, stepLabel2, stepLabel3].forEach(l => {
-                    l.classList.remove('label-active', 'label-fermenting-active');
-                });
-
-                switch (currentState) {
+                switch (machineState) {
                     case 'idle':
-                        mainCard.classList.add('state-idle');
+                        mainCard.classList.add('state-idle-monitor');
                         statusBadge.classList.add('idle-badge');
-                        statusBadge.textContent = '● 空闲中';
+                        statusBadge.textContent = '● 等待启动';
                         ringProgress.style.stroke = '#9ca3af';
                         ringProgress.style.strokeDashoffset = '0';
                         indicatorIcon.textContent = '💤';
-                        indicatorStateText.textContent = '空闲中';
+                        indicatorStateText.textContent = '就绪';
                         indicatorTimer.textContent = '--:--';
                         indicatorTimer.classList.add('idle-timer');
-                        btnStart.disabled = false;
-                        btnStart.innerHTML = '<span class="btn-icon">🥖</span> 开始和面';
-                        btnStop.disabled = true;
-                        // 步骤全灰
                         [stepDot1, stepDot2, stepDot3].forEach(d => d.classList.add('done'));
-                        [stepLabel1, stepLabel2, stepLabel3].forEach(l => l.classList.remove('label-active',
-                            'label-fermenting-active'));
                         break;
-
                     case 'kneading':
                         mainCard.classList.add('state-kneading');
                         statusBadge.classList.add('kneading-badge');
@@ -837,156 +1733,35 @@
                         indicatorStateText.textContent = '和面中';
                         updateTimerDisplay();
                         indicatorTimer.classList.remove('idle-timer');
-                        btnStart.disabled = true;
-                        btnStart.innerHTML = '<span class="btn-icon">⏳</span> 运行中...';
-                        btnStop.disabled = false;
-                        // 步骤1高亮
                         stepDot1.classList.add('active-kneading');
                         stepLine1.classList.add('active-line');
                         stepLabel1.classList.add('label-active');
-                        stepDot2.classList.remove('done', 'active-fermenting');
-                        stepDot3.classList.remove('done');
+                        stepDot2.classList.remove('done');
                         stepDot3.classList.add('done');
                         break;
-
                     case 'fermenting':
                         mainCard.classList.add('state-fermenting');
                         statusBadge.classList.add('fermenting-badge');
                         statusBadge.textContent = '⏳ 发酵中';
                         ringProgress.style.stroke = '#10b981';
-                        ringProgress.style.strokeDashoffset = '0';
                         ringProgress.classList.add('pulsing');
                         indicatorIcon.textContent = '🧪';
                         indicatorStateText.textContent = '发酵中';
                         updateTimerDisplay();
+                        updateFermentingProgress();
                         indicatorTimer.classList.remove('idle-timer');
-                        btnStart.disabled = true;
-                        btnStart.innerHTML = '<span class="btn-icon">⏳</span> 运行中...';
-                        btnStop.disabled = false;
-                        // 步骤1完成，步骤2高亮
-                        stepDot1.classList.remove('active-kneading');
                         stepDot1.classList.add('done');
-                        stepLine1.classList.remove('active-line');
                         stepLine1.classList.add('fermenting-line');
                         stepDot2.classList.add('active-fermenting');
-                        stepLabel1.classList.remove('label-active');
                         stepLabel2.classList.add('label-fermenting-active');
-                        stepLine2.classList.remove('fermenting-line');
-                        stepDot3.classList.remove('done');
                         stepDot3.classList.add('done');
                         break;
                 }
+                updateButtons();
+                updateCardStyle();
             }
 
-            function updateTimerDisplay() {
-                if (currentState === 'kneading') {
-                    // 和面阶段：往上计数，显示已运行时间
-                    const mins = Math.floor(elapsedSeconds / 60);
-                    const secs = elapsedSeconds % 60;
-                    indicatorTimer.textContent =
-                        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-                    // 进度环保持spinning动画，不设确定进度
-                } else {
-                    // 发酵阶段：往下计数
-                    const total = currentTotalDuration;
-                    const remaining = Math.max(0, total - elapsedSeconds);
-                    const mins = Math.floor(remaining / 60);
-                    const secs = remaining % 60;
-                    indicatorTimer.textContent =
-                        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-
-                    // 更新进度环
-                    const progress = total > 0 ? (elapsedSeconds / total) : 0;
-                    const circumference = 565;
-                    const offset = circumference * (1 - progress);
-                    ringProgress.style.strokeDashoffset = String(offset);
-                }
-            }
-
-            // ============ 核心逻辑 ============
-            function clearAllTimers() {
-                if (timerInterval) {
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                }
-                if (stateTimeout) {
-                    clearTimeout(stateTimeout);
-                    stateTimeout = null;
-                }
-                if (pollingInterval) {
-                    clearInterval(pollingInterval);
-                    pollingInterval = null;
-                }
-            }
-
-            async function startKneading() {
-                if (currentState !== 'idle') return;
-
-                clearAllTimers();
-                stopPolling();
-                currentState = 'kneading';
-                elapsedSeconds = 0;
-                currentTotalDuration = 0; // 和面阶段往上计数
-                updateUI();
-                soundStateChange();
-                vibrate([30, 50, 30]);
-                showToast('🔔 和面机开始运转');
-
-                // 发送启动请求到ESP32，调用 motor_coordinated_control()
-                try {
-                    const data = await apiCall('/api/start', 'POST');
-                    if (data.status !== 'ok') {
-                        throw new Error('启动失败');
-                    }
-                } catch (e) {
-                    showToast('⚠ 无法连接设备', true);
-                    resetToIdle();
-                    return;
-                }
-
-                // 计时器往上计数，显示已运行时间
-                timerInterval = setInterval(() => {
-                    elapsedSeconds++;
-                    updateTimerDisplay();
-                }, 1000);
-
-                // 轮询 /api/status 等待电机协同完成
-                startPolling();
-            }
-
-            function startFermenting() {
-                clearAllTimers();
-                currentState = 'fermenting';
-                elapsedSeconds = 0;
-                currentTotalDuration = FERMENTING_DURATION;
-                updateUI();
-                soundStateChange();
-                vibrate([50, 30, 50]);
-                showToast('🫧 进入发酵阶段');
-
-                timerInterval = setInterval(() => {
-                    elapsedSeconds++;
-                    updateTimerDisplay();
-                    if (elapsedSeconds >= FERMENTING_DURATION) {
-                        // 发酵完成
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                        completeProcess();
-                    }
-                }, 1000);
-
-                stateTimeout = setTimeout(() => {
-                    if (currentState === 'fermenting') {
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                        completeProcess();
-                    }
-                }, FERMENTING_DURATION * 1000 + 500);
-            }
-
-            function completeProcess() {
-                clearAllTimers();
-                // 短暂显示完成状态
+            function updateMonitorUIComplete() {
                 ringProgress.classList.remove('spinning', 'pulsing');
                 ringProgress.style.stroke = '#10b981';
                 ringProgress.style.strokeDashoffset = '0';
@@ -995,14 +1770,10 @@
                 indicatorTimer.textContent = '00:00';
                 indicatorTimer.classList.add('idle-timer');
                 statusBadge.textContent = '★ 完成';
-                statusBadge.classList.remove('kneading-badge', 'fermenting-badge');
+                statusBadge.classList.remove('kneading-badge', 'fermenting-badge', 'idle-badge');
                 statusBadge.classList.add('fermenting-badge');
-                mainCard.classList.remove('state-kneading', 'state-fermenting');
+                mainCard.classList.remove('state-kneading', 'state-idle-monitor');
                 mainCard.classList.add('state-fermenting');
-                btnStart.disabled = true;
-                btnStart.innerHTML = '<span class="btn-icon">✅</span> 已完成';
-                btnStop.disabled = true;
-                // 步骤全部亮起
                 [stepDot1, stepDot2, stepDot3].forEach(d => {
                     d.classList.remove('active-kneading', 'active-fermenting', 'done');
                     d.classList.add('active-fermenting');
@@ -1015,135 +1786,88 @@
                     l.classList.remove('label-active');
                     l.classList.add('label-fermenting-active');
                 });
-
-                soundComplete();
-                vibrate([100, 50, 100, 50, 200]);
-                showToast('🎉 面团处理完成！');
-
-                // 短暂显示完成后回到空闲
-                setTimeout(() => {
-                    resetToIdle();
-                }, 2000);
             }
 
-            async function emergencyStop() {
-                if (currentState === 'idle') return;
-
-                clearAllTimers();
-                stopPolling();
-
-                // 发送停止请求到ESP32，调用 motor_emergency_stop()
-                try {
-                    await apiCall('/api/stop', 'POST');
-                } catch (e) {
-                    // 即使请求失败也继续重置UI
+            function updateTimerDisplay() {
+                if (machineState === 'kneading') {
+                    const mins = Math.floor(elapsedSeconds / 60);
+                    const secs = elapsedSeconds % 60;
+                    indicatorTimer.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                } else if (machineState === 'fermenting') {
+                    const remaining = Math.max(0, fermentingDuration - elapsedSeconds);
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    indicatorTimer.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
                 }
-
-                currentState = 'idle';
-                elapsedSeconds = 0;
-                currentTotalDuration = 0;
-                updateUI();
-                soundStop();
-                vibrate([200, 80, 200]);
-                showToast('🛑 已紧急停止！', true);
-
-                // 重置步骤
-                [stepDot1, stepDot2, stepDot3].forEach(d => {
-                    d.classList.remove('active-kneading', 'active-fermenting', 'done');
-                });
-                [stepDot1, stepDot2, stepDot3].forEach(d => d.classList.add('done'));
-                [stepLine1, stepLine2].forEach(l => {
-                    l.classList.remove('active-line', 'fermenting-line');
-                });
-                [stepLabel1, stepLabel2, stepLabel3].forEach(l => {
-                    l.classList.remove('label-active', 'label-fermenting-active');
-                });
             }
 
-            function resetToIdle() {
-                clearAllTimers();
-                currentState = 'idle';
-                elapsedSeconds = 0;
-                currentTotalDuration = 0;
-                updateUI();
-                [stepDot1, stepDot2, stepDot3].forEach(d => {
-                    d.classList.remove('active-kneading', 'active-fermenting', 'done');
-                });
-                [stepDot1, stepDot2, stepDot3].forEach(d => d.classList.add('done'));
-                [stepLine1, stepLine2].forEach(l => {
-                    l.classList.remove('active-line', 'fermenting-line');
-                });
-                [stepLabel1, stepLabel2, stepLabel3].forEach(l => {
-                    l.classList.remove('label-active', 'label-fermenting-active');
-                });
+            function updateFermentingProgress() {
+                if (machineState !== 'fermenting') return;
+                const progress = fermentingDuration > 0 ? (elapsedSeconds / fermentingDuration) : 0;
+                const circumference = 565;
+                const offset = circumference * (1 - Math.min(progress, 1));
+                ringProgress.style.strokeDashoffset = String(offset);
             }
 
-            // ============ 事件监听 ============
-            btnStart.addEventListener('click', () => {
-                if (currentState === 'idle') {
-                    startKneading();
-                }
-            });
+            // 暴露到全局作用域，供onclick调用
+            window.selectFoodType = selectFoodType;
+            window.selectTime = selectTime;
+            window.selectWeight = selectWeight;
+            window.selectTexture = selectTexture;
+            window.onCustomTimeChange = onCustomTimeChange;
+            window.onCustomWeightChange = onCustomWeightChange;
+            window.goToPrevPage = goToPrevPage;
+            window.goToNextPage = goToNextPage;
+            window.emergencyStop = emergencyStop;
+            window.restartAll = restartAll;
 
-            btnStop.addEventListener('click', () => {
-                if (currentState !== 'idle') {
-                    emergencyStop();
-                }
-            });
-
-            // 防止双击缩放
-            document.addEventListener('dblclick', function(e) {
-                if (e.target.closest('.btn')) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-
-            // 键盘快捷键（用于测试）
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    if (currentState === 'idle' && document.activeElement === btnStart) {
-                        e.preventDefault();
-                        startKneading();
-                    }
-                }
-                if (e.key === 'Escape') {
-                    if (currentState !== 'idle') {
-                        e.preventDefault();
-                        emergencyStop();
-                    }
-                }
-            });
-
-            // ============ 初始化 ============
             function init() {
-                currentState = 'idle';
+                currentPage = 1;
+                machineState = 'idle';
                 elapsedSeconds = 0;
-                currentTotalDuration = 0;
+                fermentingDuration = 600;
+                selectedFoodType = null;
+                selectedTime = null;
+                customTimeValue = '12:00';
+                selectedWeight = null;
+                customWeightValue = 250;
+                selectedTexture = null;
+
+                document.querySelectorAll('.page-content').forEach(p => {
+                    p.style.display = 'none';
+                    p.classList.remove('active', 'exit-left', 'exit-right');
+                    p.style.opacity = '';
+                    p.style.transform = '';
+                });
+                const page1 = getPageElement(1);
+                if (page1) {
+                    page1.style.display = 'flex';
+                    page1.classList.add('active');
+                    page1.style.opacity = '1';
+                    page1.style.transform = 'translateY(0)';
+                }
+
+                updatePageIndicator();
+                updateButtons();
+                updateHeaderForPage();
+                updateCardStyle();
+                updateMonitorUI();
                 ringProgress.style.stroke = '#9ca3af';
                 ringProgress.style.strokeDashoffset = '0';
                 ringProgress.classList.remove('spinning', 'pulsing');
-                updateUI();
-                [stepDot1, stepDot2, stepDot3].forEach(d => d.classList.add('done'));
-                [stepLabel1, stepLabel2, stepLabel3].forEach(l => {
-                    l.classList.remove('label-active', 'label-fermenting-active');
-                });
-                [stepLine1, stepLine2].forEach(l => {
-                    l.classList.remove('active-line', 'fermenting-line');
-                });
-                btnStart.disabled = false;
-                btnStart.innerHTML = '<span class="btn-icon">🥖</span> 开始和面';
-                btnStop.disabled = true;
-                mainCard.classList.remove('state-kneading', 'state-fermenting');
-                mainCard.classList.add('state-idle');
+                mainCard.classList.remove('state-kneading', 'state-fermenting', 'state-idle-monitor');
+                customTimeInput.style.display = 'none';
+                customWeightWrapper.style.display = 'none';
+                btnStop.style.display = 'none';
+                btnRestart.style.display = 'none';
+                btnNext.style.display = 'flex';
+                btnPrev.style.display = 'none';
+
+                console.log('🍞 和面机多页面控制面板已就绪');
+                console.log('   所有页面均需手动点击"下一步"进行跳转');
             }
 
             init();
-
-            console.log('🍞 和面机控制面板已就绪');
-            console.log('   - 点击"开始和面"调用 motor_coordinated_control()');
-            console.log('   - 和面完成后自动进入发酵阶段（10分钟倒计时）');
-            console.log('   - 任意时刻点击"紧急停止"调用 motor_emergency_stop()');
-            console.log('   - 按 Escape 键也可触发紧急停止');
         })();
     </script>
 </body>

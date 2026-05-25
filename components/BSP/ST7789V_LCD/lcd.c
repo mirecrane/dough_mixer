@@ -39,6 +39,7 @@ void bsp_lcd_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_reset(lcd_panel));
     vTaskDelay(pdMS_TO_TICKS(200)); // 等待屏幕稳定
     ESP_ERROR_CHECK(esp_lcd_panel_init(lcd_panel));
+    esp_lcd_panel_mirror(lcd_panel, true, true);
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(lcd_panel, true));
 
     // 5. 开启背光

@@ -79,6 +79,9 @@ void gptim_set_period(uint32_t period_us)
 void gptim_start(void)
 {
     if (gptimer && !is_running) {
+        /* 确保 timer 回到 INIT 态再 enable，避免 ISR 完成后残留 READY 态 */
+        gptimer_stop(gptimer);
+        gptimer_disable(gptimer);
         pulse_count = 0;
         is_running = true;
         gptimer_enable(gptimer);

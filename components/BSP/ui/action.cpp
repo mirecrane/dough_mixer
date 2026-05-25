@@ -3,10 +3,22 @@
 #include "motor.h"
 #include "ui.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 using namespace eez;
+using namespace eez::flow;
 
 static const char *TAG = "ACTIONS";
+static TaskHandle_t g_motor_task_handle = NULL;
+
+static void motor_task(void *pvParameters)
+{
+    uint32_t weight = (uint32_t)(uintptr_t)pvParameters;
+    motor_coordinated_control_ui_http(weight);
+    g_motor_task_handle = NULL;
+    vTaskDelete(NULL);
+}
 
 extern "C" {
 
@@ -54,12 +66,17 @@ void action_star_mixer(lv_event_t *e)
 {
     int32_t w = get_var_dough_weight();
     ESP_LOGI(TAG, "Start mixer, weight=%ldg", (long)w);
-    motor_coordinated_control_ui_http((uint32_t)w);
+    xTaskCreate(motor_task, "motor_task", 8192,
+                (void *)(uintptr_t)w, 5, &g_motor_task_handle);
 }
 
 void action_stop(lv_event_t *e)
 {
     ESP_LOGI(TAG, "Emergency stop");
+    if (g_motor_task_handle != NULL) {
+        vTaskDelete(g_motor_task_handle);
+        g_motor_task_handle = NULL;
+    }
     motor_emergency_stop();
 }
 

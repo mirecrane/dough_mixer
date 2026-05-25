@@ -10,6 +10,7 @@
 static const char *TAG = "MOTOR";
 
 static TaskHandle_t step_auto_task_handle = NULL;
+static volatile bool g_emergency_stop = false;
 
 /**
  * @brief 步进电机往返运行任务
@@ -46,6 +47,7 @@ void step_stop_auto_mode(void)
 
 void motor_emergency_stop(void)
 {
+    g_emergency_stop = true;
     step_stop_auto_mode();
     step_stop();
     pump_stop();
@@ -425,12 +427,20 @@ void motor_coordinated_control(void)
         .step_turns = 1.0f
     };
 
+    g_emergency_stop = false;
+
     dough_esc_cycle_run(cmd.cycle_times, cmd.on_time_ms, cmd.off_time_ms);
+    if (g_emergency_stop) return;
     pump_work(cmd.pump_work_times_ms);
+    if (g_emergency_stop) return;
     grinder_work(cmd.grinder_work_times_ms);
+    if (g_emergency_stop) return;
     servo_coordinated_control();
+    if (g_emergency_stop) return;
     step_rotate_turns(cmd.step_turns, DIR_CW, 1000);
+    if (g_emergency_stop) return;
     mixer_work(cmd.mixer_work_times_min);
+    if (g_emergency_stop) return;
     step_rotate_turns(cmd.step_turns, DIR_CCW, 1000);
 }
 
@@ -453,12 +463,20 @@ void motor_coordinated_control_ui_http(uint32_t weight)
              (unsigned long)cmd.mixer_work_times_min,
              (double)cmd.step_turns);
 
+    g_emergency_stop = false;
+
     dough_esc_cycle_run(cmd.cycle_times, cmd.on_time_ms, cmd.off_time_ms);
+    if (g_emergency_stop) return;
     pump_work(cmd.pump_work_times_ms);
+    if (g_emergency_stop) return;
     grinder_work(cmd.grinder_work_times_ms);
+    if (g_emergency_stop) return;
     servo_coordinated_control();
+    if (g_emergency_stop) return;
     step_rotate_turns(cmd.step_turns, DIR_CW, 1000);
+    if (g_emergency_stop) return;
     mixer_work(cmd.mixer_work_times_min);
+    if (g_emergency_stop) return;
     step_rotate_turns(cmd.step_turns, DIR_CCW, 1000);
 }
 

@@ -16,7 +16,7 @@ extern "C" {
 #define LCD_DC      GPIO_NUM_12  // 数据/命令切换引脚，高=数据，低=命令
 #define LCD_MOSI    GPIO_NUM_13  // SPI 主机发从机收数据引脚（SDI）
 #define LCD_SCK     GPIO_NUM_14  // SPI 时钟信号引脚
-#define LCD_BL      GPIO_NUM_17  // 屏幕背光控制引脚，高电平点亮背光
+#define LCD_BL      GPIO_NUM_2  // 屏幕背光控制引脚，高电平点亮背光
 
 #define SPI_HOST    SPI2_HOST    // 使用SPI2控制器
 

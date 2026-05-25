@@ -36,7 +36,10 @@ extern "C" void app_main(void)
     /* ---- WiFi AP ---- */
     wifi_init_softap();
 
-    /* ---- HTTP 服务器 ---- */
+    /* ---- TCP 服务器 (8080 调试) ---- */
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+
+    /* ---- HTTP 服务器 (80 网页) ---- */
     http_server_start();
 
     /* ---- LCD ---- */

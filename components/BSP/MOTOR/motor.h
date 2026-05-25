@@ -16,10 +16,10 @@ extern "C" {
 #define step_en   GPIO_NUM_6
 
 //面粉电机引脚定义
-#define dough_pwm GPIO_NUM_15
+#define dough_pwm GPIO_NUM_47//GPIO_NUM_15
 
 //搅拌电机引脚定义
-#define mixer_pwm GPIO_NUM_9
+#define mixer_pwm GPIO_NUM_48//GPIO_NUM_9
 
 //水泵电机引脚定义
 #define pump_pin GPIO_NUM_7

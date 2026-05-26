@@ -1,3 +1,4 @@
+/** @file spi.h — SPI2 总线引脚定义 (LCD 专用) */
 #ifndef __SPI_H
 #define __SPI_H
 

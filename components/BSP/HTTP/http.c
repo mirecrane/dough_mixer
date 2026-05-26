@@ -1,3 +1,12 @@
+/**
+ * @file    http.c
+ * @brief   HTTP 服务器 — 网页 + REST API
+ *
+ * CMake EMBED_FILES 将 http.html 嵌入固件, 运行时直接发送二进制数据.
+ * /api/start 从 JSON body 解析 weight 参数, 创建独立 FreeRTOS 任务执行电机控制.
+ * /api/stop 销毁电机任务 + 调用 motor_emergency_stop().
+ */
+
 #include "http.h"
 #include "motor.h"
 #include "esp_http_server.h"
@@ -10,7 +19,7 @@
 
 static const char *TAG = "HTTP";
 
-/* 由 CMake EMBED_FILES 生成的符号 */
+/** 嵌入式网页二进制数据 (由 CMake EMBED_FILES 自动生成) */
 extern const unsigned char _binary_http_html_start[] asm("_binary_http_html_start");
 extern const unsigned char _binary_http_html_end[]   asm("_binary_http_html_end");
 

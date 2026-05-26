@@ -1,3 +1,11 @@
+/**
+ * @file    gptim.c
+ * @brief   GPTimer 脉冲发生器 — 步进电机底层驱动.
+ *
+ * 工作原理: 1MHz 计数, alarm ISR 翻转 GPIO, 下降沿计数, 达标自动停.
+ * 状态机:   INIT → enable → READY → start → RUNNING → stop → disable → INIT
+ * 每次 gptim_start() 先 stop+disable 确保从 INIT 态安全启动.
+ */
 #include "gptim.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -6,8 +14,8 @@
 static const char *TAG = "GPTIM";
 
 static gptimer_handle_t gptimer = NULL;
-static volatile bool is_running = false;
-static volatile uint32_t pulse_count = 0;
+static volatile bool is_running = false;          /**< 脉冲输出进行中 */
+static volatile uint32_t pulse_count = 0;         /**< 已输出脉冲数 (下降沿计数) */
 static volatile uint32_t target_pulse_count = 0;
 static gpio_num_t step_pin;
 

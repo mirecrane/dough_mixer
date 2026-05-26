@@ -1,3 +1,7 @@
+/**
+ * @file    touch.h
+ * @brief   FT6336U 电容触摸驱动 — I2C 接口, 兼容 FT5x06 协议
+ */
 #ifndef __FT6336U_TOUCH_H
 #define __FT6336U_TOUCH_H
 

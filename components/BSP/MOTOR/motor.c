@@ -1,3 +1,18 @@
+/**
+ * @file    motor.c
+ * @brief   和面机全电机控制实现
+ *
+ * 电机控制架构:
+ *   - 步进电机:  GPIO bit-bang + GPTimer 硬件定时器产生精确脉冲
+ *   - ESC 电机:   LEDC 50Hz PWM, 1~2ms 脉宽控制转速
+ *   - 继电器:     GPIO 高低电平直接控制
+ *   - 舵机:       LEDC 50Hz PWM, 0.5~2.5ms 脉宽控制角度
+ *
+ * 紧急停止机制:
+ *   1. g_emergency_stop 全局标记 — 电机协同函数每步前检查
+ *   2. vTaskDelete 销毁电机任务 — 从外部强制终止
+ */
+
 #include "motor.h"
 #include "gptim.h"
 #include "freertos/FreeRTOS.h"
@@ -9,7 +24,10 @@
 
 static const char *TAG = "MOTOR";
 
+/** 步进电机自动往返模式的 FreeRTOS 任务句柄 */
 static TaskHandle_t step_auto_task_handle = NULL;
+
+/** 紧急停止标记: 置位后电机协同函数在各步骤间检测并提前退出 */
 static volatile bool g_emergency_stop = false;
 
 /**
@@ -45,6 +63,16 @@ void step_stop_auto_mode(void)
     }
 }
 
+/**
+ * @brief 紧急停止 — 立即停止所有电机并销毁自动任务
+ *
+ * 调用时机: EEZ UI 紧急按钮 / HTTP POST /api/stop / 串口/TCP STOP 指令
+ * 行为:
+ *   1. 置 g_emergency_stop = true → 电机协同函数检测后提前返回
+ *   2. 销毁步进自动往返任务 (如果运行中)
+ *   3. 停止步进脉冲输出
+ *   4. 逐一停止所有电机硬件
+ */
 void motor_emergency_stop(void)
 {
     g_emergency_stop = true;
@@ -95,22 +123,32 @@ void step_disable(void)
     gpio_set_level(step_en, 1);
 }
 
+/**
+ * @brief 步进电机旋转指定角度 (阻塞式)
+ * @param angle    角度 (度), 正值
+ * @param dir      方向 DIR_CW / DIR_CCW
+ * @param speed_us 脉冲间隔 (微秒), 值越小越快, 典型 1000us
+ *
+ * 执行过程: 使能→设方向→配置 GPTimer→启动→忙等→失能
+ * 阻塞时长 ≈ steps × speed_us (如 1600 脉冲 × 1000us = 1.6s/圈)
+ */
 void step_rotate_angle(float angle, uint8_t dir, uint32_t speed_us)
 {
     uint32_t steps = (uint32_t)((angle / 360.0f) * PULSE_PER_REV);
     if (steps == 0) return;
-    
+
     step_enable();
     step_set_dir(dir);
-    
+
     gptim_set_period(speed_us);
     gptim_set_pulse_count(steps);
     gptim_start();
-    
+
+    /* 忙等 GPTimer 发完所有脉冲 */
     while (gptim_is_running()) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
-    
+
     step_disable();
 }
 
@@ -415,6 +453,20 @@ void servo_coordinated_control(void)
 }
 
 // 电机协同函数实现
+/**
+ * @brief 电机协同控制 (默认参数, 不传重量)
+ *
+ * 执行顺序 (7 步流水线):
+ *   1. 面粉电机循环运行 (5 周期 × 10s ON + 5s OFF)
+ *   2. 水泵 10s
+ *   3. 研磨电机 10s
+ *   4. 舵机协同动作
+ *   5. 步进电机正转 1 圈
+ *   6. 搅拌电机 1 分钟
+ *   7. 步进电机反转 1 圈
+ *
+ * 每一步前检查 g_emergency_stop 标记, 置位则立即返回
+ */
 void motor_coordinated_control(void)
 {
     motor_command_t cmd = {

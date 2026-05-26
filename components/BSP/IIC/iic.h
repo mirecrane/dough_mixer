@@ -1,3 +1,4 @@
+/** @file iic.h — I2C1 总线引脚定义 (触摸专用) */
 #ifndef __IIC_H
 #define __IIC_H
 

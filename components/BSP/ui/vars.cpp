@@ -1,3 +1,9 @@
+/**
+ * @file    vars.cpp
+ * @brief   EEZ UI 全局变量实现 (用户编写, 不会被 EEZ Studio 覆盖)
+ *
+ * 管理 dough_weight 变量的 getter/setter 和初始化
+ */
 #include "vars.h"
 #include "motor.h"
 #include "ui.h"

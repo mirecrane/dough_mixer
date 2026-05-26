@@ -320,7 +320,7 @@ void mixer_work(uint32_t work_times_min)
 void relay_init(void)
 {
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << pump_pin) | (1ULL << grinder_pin),
+        .pin_bit_mask = (1ULL << pump_pin) | (1ULL << grinder_pin) | (1ULL << magnet_pin),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -332,8 +332,8 @@ void relay_init(void)
     // 这里统一设为 0，具体逻辑根据硬件继电器模块确定
     gpio_set_level(pump_pin, 0);
     gpio_set_level(grinder_pin, 0);
-    
-    ESP_LOGI(TAG, "Relay motors (Pump & Grinder) initialized");
+    gpio_set_level(magnet_pin, 0);
+    ESP_LOGI(TAG, "Relay motors (Pump & Grinder & Magnet) initialized");
 }
 
 //水泵电机函数实现
@@ -374,6 +374,26 @@ void grinder_work(uint32_t grinder_work_times_ms)
     grinder_start();
     vTaskDelay(pdMS_TO_TICKS(grinder_work_times_ms));
     grinder_stop();
+}
+
+//电磁铁函数实现
+void magnet_start(void)
+{
+    gpio_set_level(magnet_pin, 1);
+    ESP_LOGI(TAG, "Magnet started");
+}
+
+void magnet_stop(void)
+{
+    gpio_set_level(magnet_pin, 0);
+    ESP_LOGI(TAG, "Magnet stopped");
+}
+
+void magnet_work(uint32_t magnet_work_times_ms)
+{
+    magnet_start();
+    vTaskDelay(pdMS_TO_TICKS(magnet_work_times_ms));
+    magnet_stop();
 }
 
 //舵机函数实现

@@ -17,7 +17,12 @@ enum ScreensEnum {
     SCREEN_ID_WEIGHT_SET = 4,
     SCREEN_ID_KOUGAN = 5,
     SCREEN_ID_MIXER = 6,
-    _SCREEN_ID_LAST = 6
+    SCREEN_ID_TIMER = 7,
+    SCREEN_ID_FINISH = 8,
+    SCREEN_ID_STEP_OUT = 9,
+    SCREEN_ID_STEP_BACK = 10,
+    SCREEN_ID_END = 11,
+    _SCREEN_ID_LAST = 11
 };
 
 typedef struct _objects_t {
@@ -27,6 +32,11 @@ typedef struct _objects_t {
     lv_obj_t *weight_set;
     lv_obj_t *kougan;
     lv_obj_t *mixer;
+    lv_obj_t *timer;
+    lv_obj_t *finish;
+    lv_obj_t *step_out;
+    lv_obj_t *step_back;
+    lv_obj_t *end;
     lv_obj_t *obj0;
     lv_obj_t *obj1;
     lv_obj_t *jiao_zi;
@@ -75,6 +85,16 @@ typedef struct _objects_t {
     lv_obj_t *stop;
     lv_obj_t *back_mixer;
     lv_obj_t *fanhui_7;
+    lv_obj_t *stop_1;
+    lv_obj_t *timer_sec;
+    lv_obj_t *timer_min;
+    lv_obj_t *ok_finish;
+    lv_obj_t *ok_step_out;
+    lv_obj_t *obj11;
+    lv_obj_t *ok_step_back;
+    lv_obj_t *obj12;
+    lv_obj_t *ok_finish_2;
+    lv_obj_t *obj13;
 } objects_t;
 
 extern objects_t objects;
@@ -96,6 +116,21 @@ void tick_screen_kougan();
 
 void create_screen_mixer();
 void tick_screen_mixer();
+
+void create_screen_timer();
+void tick_screen_timer();
+
+void create_screen_finish();
+void tick_screen_finish();
+
+void create_screen_step_out();
+void tick_screen_step_out();
+
+void create_screen_step_back();
+void tick_screen_step_back();
+
+void create_screen_end();
+void tick_screen_end();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

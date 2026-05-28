@@ -73,6 +73,9 @@ void action_star_mixer(lv_event_t *e)
 {
     int32_t w = get_var_dough_weight();
     ESP_LOGI(TAG, "Start mixer, weight=%ldg", (long)w);
+    set_var_motor_running(true);
+    set_var_timer_min(0);
+    set_var_timer_sec(0);
     xTaskCreate(motor_task, "motor_task", 8192,
                 (void *)(uintptr_t)w, 5, &g_motor_task_handle);
 }
@@ -85,6 +88,24 @@ void action_stop(lv_event_t *e)
         g_motor_task_handle = NULL;
     }
     motor_emergency_stop();
+    motor_timer_reset();
+    set_var_motor_running(false);
+    set_var_timer_min(0);
+    set_var_timer_sec(0);
+}
+
+/** 步进电机推出 (CCW), 2.9 圈 */
+void action_step_out(lv_event_t *e)
+{
+    ESP_LOGI(TAG, "Step out: CCW 2.9 turns");
+    step_rotate_turns(2.9f, DIR_CCW, 1000);
+}
+
+/** 步进电机退回 (CW) */
+void action_step_back(lv_event_t *e)
+{
+    ESP_LOGI(TAG, "Step back: CW");
+    step_rotate_turns(2.9f, DIR_CW, 1000);
 }
 
 } /* extern "C" */

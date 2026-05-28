@@ -33,10 +33,10 @@ extern "C" {
 #define step_en   GPIO_NUM_6   /**< 使能信号, 1=脱机(自由), 0=锁定 */
 
 /* 面粉电机 — 无刷 ESC PWM */
-#define dough_pwm GPIO_NUM_47  /**< 面粉电机 PWM 信号线 (原 GPIO15 有冲突) */
+#define dough_pwm GPIO_NUM_15  /**< 面粉电机 PWM 信号线 (原 GPIO15 有冲突) */
 
 /* 搅拌电机 — 无刷 ESC PWM */
-#define mixer_pwm GPIO_NUM_48  /**< 搅拌电机 PWM 信号线 (原 GPIO9 有冲突) */
+#define mixer_pwm GPIO_NUM_9  /**< 搅拌电机 PWM 信号线 (原 GPIO9 有冲突) */
 
 /* 水泵 / 研磨电机 — 继电器 */
 #define pump_pin    GPIO_NUM_7   /**< 水泵继电器控制引脚 */
@@ -95,6 +95,7 @@ void relay_init(void);      /**< 初始化水泵和研磨继电器 GPIO */
 /*====================================================================
  *  面粉电机 API (无刷 ESC)
  *====================================================================*/
+void dough_esc_init(void);            /**< ESC 校准 (5% duty) */
 void dough_esc_init_and_start(void);  /**< ESC 校准 + 启动 */
 void dough_esc_stop(void);            /**< ESC 停止 */
 void dough_esc_cycle_run(uint8_t cycle_times, uint32_t on_time_ms,
@@ -147,6 +148,15 @@ void step_stop_auto_mode(void);
  *  全局控制
  *====================================================================*/
 void motor_emergency_stop(void);  /**< 紧急停止: 销毁所有任务 + 停止所有电机 */
+
+/** 记录电机开始时刻 (FreeRTOS tick), 在协同控制函数开头调用 */
+void motor_timer_start(void);
+
+/** 清除计时 (紧急停止后调用) */
+void motor_timer_reset(void);
+
+/** 获取电机已运行秒数 (从 motor_timer_start 算起) */
+uint32_t motor_get_elapsed_seconds(void);
 
 /*====================================================================
  *  协同控制 (多电机顺序执行)

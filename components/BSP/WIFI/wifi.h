@@ -85,6 +85,10 @@
  *  API
  *====================================================================*/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief 初始化并启动 WiFi AP 模式
  *
@@ -119,5 +123,9 @@ void wifi_init_softap(void);
  *       当前客户端断开后才会接受下一个.
  */
 void tcp_server_task(void *pvParameters);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __WIFI_H__ */

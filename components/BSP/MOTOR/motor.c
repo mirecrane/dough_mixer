@@ -240,6 +240,13 @@ void motor_pwm_init(void)
 }
 
 //面粉电机函数实现
+void dough_esc_init(void)
+{
+    uint32_t duty_5 = 819; // 5% 占空比 (1ms)
+    ESP_LOGI(TAG, "Dough Motor ESC Initializing: Setting 5%% duty...");
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH, duty_5));
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH));
+}
 void dough_esc_init_and_start(void)
 {
     uint32_t duty_5 = 819;
@@ -518,6 +525,8 @@ void motor_coordinated_control(void)
 
 void motor_coordinated_control_ui_http(uint32_t weight)
 {
+    motor_timer_start();  /* 记录开始时刻, 供 UI 显示运行秒数 */
+
     // 根据面粉重量计算各个电机的工作时间和步进电机的转数
     motor_command_t cmd = {
         .cycle_times = (weight + 49) / (DOUGH_G_PER_SEC * 10), // 粗略估算每10秒5克，向上取整
@@ -550,6 +559,28 @@ void motor_coordinated_control_ui_http(uint32_t weight)
     mixer_work(cmd.mixer_work_times_min);
     if (g_emergency_stop) return;
     step_rotate_turns(cmd.step_turns, DIR_CCW, 1000);
+}
+
+/*====================================================================
+ *  运行计时器 (供 EEZ UI 显示电机运行秒数)
+ *====================================================================*/
+
+static uint32_t g_motor_start_tick = 0;
+
+void motor_timer_start(void)
+{
+    g_motor_start_tick = xTaskGetTickCount();
+}
+
+void motor_timer_reset(void)
+{
+    g_motor_start_tick = 0;
+}
+
+uint32_t motor_get_elapsed_seconds(void)
+{
+    if (g_motor_start_tick == 0) return 0;
+    return (xTaskGetTickCount() - g_motor_start_tick) * portTICK_PERIOD_MS / 1000;
 }
 
 

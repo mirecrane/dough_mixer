@@ -12,8 +12,8 @@
 
 objects_t objects;
 
-static const char *screen_names[] = { "Main", "time", "weight", "weight_set", "kougan", "mixer" };
-static const char *object_names[] = { "main", "time", "weight", "weight_set", "kougan", "mixer", "obj0", "obj1", "jiao_zi", "jiaozi", "mianbao", "obj2", "mantou", "obj3", "obj4", "obj5", "obj6", "hour", "minute", "obj7", "obj8", "back_time", "fanhui", "ok_time", "fanhui_1", "obj9", "obj10", "set_200g", "set_300g", "set_500g", "set_1000g", "weight_self", "back_weight", "fanhui_4", "ok_weight", "fanhui_8", "select_weight", "dough_add", "dough_sub", "back_weight_set", "fanhui_5", "ok_weight_set", "fanhui_9", "ruan_nuo", "shi_zhong", "jiao_jin", "back_kougan", "fanhui_6", "ok_kougan", "fanhui_10", "star_mixer", "stop", "back_mixer", "fanhui_7" };
+static const char *screen_names[] = { "Main", "time", "weight", "weight_set", "kougan", "mixer", "timer", "finish", "step_out", "step_back", "end" };
+static const char *object_names[] = { "main", "time", "weight", "weight_set", "kougan", "mixer", "timer", "finish", "step_out", "step_back", "end", "obj0", "obj1", "jiao_zi", "jiaozi", "mianbao", "obj2", "mantou", "obj3", "obj4", "obj5", "obj6", "hour", "minute", "obj7", "obj8", "back_time", "fanhui", "ok_time", "fanhui_1", "obj9", "obj10", "set_200g", "set_300g", "set_500g", "set_1000g", "weight_self", "back_weight", "fanhui_4", "ok_weight", "fanhui_8", "select_weight", "dough_add", "dough_sub", "back_weight_set", "fanhui_5", "ok_weight_set", "fanhui_9", "ruan_nuo", "shi_zhong", "jiao_jin", "back_kougan", "fanhui_6", "ok_kougan", "fanhui_10", "star_mixer", "stop", "back_mixer", "fanhui_7", "stop_1", "timer_sec", "timer_min", "ok_finish", "ok_step_out", "obj11", "ok_step_back", "obj12", "ok_finish_2", "obj13" };
 
 //
 // Event handlers
@@ -242,6 +242,10 @@ static void event_handler_cb_mixer_star_mixer(lv_event_t *e) {
         e->user_data = (void *)0;
         action_star_mixer(e);
     }
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 0, 0, e);
+    }
 }
 
 static void event_handler_cb_mixer_stop(lv_event_t *e) {
@@ -263,6 +267,106 @@ static void event_handler_cb_mixer_back_mixer(lv_event_t *e) {
     if (event == LV_EVENT_CLICKED) {
         e->user_data = (void *)0;
         flowPropagateValueLVGLEvent(flowState, 5, 0, e);
+    }
+}
+
+static void event_handler_cb_timer_stop_1(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_stop(e);
+    }
+}
+
+static void event_handler_cb_finish_ok_finish(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_out(e);
+    }
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 0, 0, e);
+    }
+}
+
+static void event_handler_cb_step_out_ok_step_out(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_out(e);
+    }
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 0, 0, e);
+    }
+}
+
+static void event_handler_cb_step_out_obj11(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_back(e);
+    }
+}
+
+static void event_handler_cb_step_back_ok_step_back(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_out(e);
+    }
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 0, 0, e);
+    }
+}
+
+static void event_handler_cb_step_back_obj12(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_back(e);
+    }
+}
+
+static void event_handler_cb_end_ok_finish_2(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 2, 0, e);
+    }
+}
+
+static void event_handler_cb_end_obj13(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        action_step_back(e);
     }
 }
 
@@ -1087,6 +1191,296 @@ void tick_screen_mixer() {
     (void)flowState;
 }
 
+void create_screen_timer() {
+    void *flowState = getFlowState(0, 6);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.timer = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 240, 320);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xc9be96), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            // stop_1
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.stop_1 = obj;
+            lv_obj_set_pos(obj, 25, 186);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_timer_stop_1, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "紧急暂停");
+                }
+            }
+        }
+        {
+            // timer_sec
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.timer_sec = obj;
+            lv_obj_set_pos(obj, 128, 83);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text(obj, "");
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 88, 44);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "已用时：");
+        }
+        {
+            // timer_min
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.timer_min = obj;
+            lv_obj_set_pos(obj, 12, 83);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text(obj, "");
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 117, 86);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_label_set_text_static(obj, ":");
+        }
+    }
+    
+    tick_screen_timer();
+}
+
+void tick_screen_timer() {
+    void *flowState = getFlowState(0, 6);
+    (void)flowState;
+    {
+        const char *new_val = evalTextProperty(flowState, 3, 3, "Failed to evaluate Text in Label widget");
+        const char *cur_val = lv_label_get_text(objects.timer_sec);
+        if (strcmp(new_val, cur_val) != 0) {
+            tick_value_change_obj = objects.timer_sec;
+            lv_label_set_text(objects.timer_sec, new_val);
+            tick_value_change_obj = NULL;
+        }
+    }
+    {
+        const char *new_val = evalTextProperty(flowState, 5, 3, "Failed to evaluate Text in Label widget");
+        const char *cur_val = lv_label_get_text(objects.timer_min);
+        if (strcmp(new_val, cur_val) != 0) {
+            tick_value_change_obj = objects.timer_min;
+            lv_label_set_text(objects.timer_min, new_val);
+            tick_value_change_obj = NULL;
+        }
+    }
+}
+
+void create_screen_finish() {
+    void *flowState = getFlowState(0, 7);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.finish = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 240, 320);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xc9be96), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            // ok_finish
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.ok_finish = obj;
+            lv_obj_set_pos(obj, 25, 142);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_finish_ok_finish, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "确认");
+                }
+            }
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 88, 44);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_32, LV_PART_MAIN | LV_STATE_CHECKED);
+            lv_label_set_text_static(obj, "和面完成");
+        }
+    }
+    
+    tick_screen_finish();
+}
+
+void tick_screen_finish() {
+    void *flowState = getFlowState(0, 7);
+    (void)flowState;
+}
+
+void create_screen_step_out() {
+    void *flowState = getFlowState(0, 8);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.step_out = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 240, 320);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xc9be96), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            // ok_step_out
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.ok_step_out = obj;
+            lv_obj_set_pos(obj, 25, 142);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_step_out_ok_step_out, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.obj11 = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_event_cb(obj, event_handler_cb_step_out_obj11, LV_EVENT_ALL, flowState);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_CHECKED);
+                    lv_label_set_text_static(obj, "确认");
+                }
+            }
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 58, 86);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_CHECKED);
+            lv_label_set_text_static(obj, "是否推出面粉盆");
+        }
+    }
+    
+    tick_screen_step_out();
+}
+
+void tick_screen_step_out() {
+    void *flowState = getFlowState(0, 8);
+    (void)flowState;
+}
+
+void create_screen_step_back() {
+    void *flowState = getFlowState(0, 9);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.step_back = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 240, 320);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xc9be96), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            // ok_step_back
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.ok_step_back = obj;
+            lv_obj_set_pos(obj, 25, 142);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_step_back_ok_step_back, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.obj12 = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_event_cb(obj, event_handler_cb_step_back_obj12, LV_EVENT_ALL, flowState);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_CHECKED);
+                    lv_label_set_text_static(obj, "确认收回");
+                }
+            }
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 58, 86);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_CHECKED);
+            lv_label_set_text_static(obj, "是否收回面粉盆");
+        }
+    }
+    
+    tick_screen_step_back();
+}
+
+void tick_screen_step_back() {
+    void *flowState = getFlowState(0, 9);
+    (void)flowState;
+}
+
+void create_screen_end() {
+    void *flowState = getFlowState(0, 10);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.end = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 240, 320);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0xc9be96), LV_PART_MAIN | LV_STATE_DEFAULT);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 12, 85);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_CHECKED);
+            lv_label_set_text_static(obj, "恭喜您又完成一次健康生活\n               请再接再厉");
+        }
+        {
+            // ok_finish_2
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.ok_finish_2 = obj;
+            lv_obj_set_pos(obj, 26, 175);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_end_ok_finish_2, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.obj13 = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_event_cb(obj, event_handler_cb_end_obj13, LV_EVENT_ALL, flowState);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_CHECKED);
+                    lv_label_set_text_static(obj, "回到初始界面");
+                }
+            }
+        }
+    }
+    
+    tick_screen_end();
+}
+
+void tick_screen_end() {
+    void *flowState = getFlowState(0, 10);
+    (void)flowState;
+}
+
 typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_main,
@@ -1095,9 +1489,14 @@ tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_weight_set,
     tick_screen_kougan,
     tick_screen_mixer,
+    tick_screen_timer,
+    tick_screen_finish,
+    tick_screen_step_out,
+    tick_screen_step_back,
+    tick_screen_end,
 };
 void tick_screen(int screen_index) {
-    if (screen_index >= 0 && screen_index < 6) {
+    if (screen_index >= 0 && screen_index < 11) {
         tick_screen_funcs[screen_index]();
     }
 }
@@ -1204,4 +1603,9 @@ void create_screens() {
     create_screen_weight_set();
     create_screen_kougan();
     create_screen_mixer();
+    create_screen_timer();
+    create_screen_finish();
+    create_screen_step_out();
+    create_screen_step_back();
+    create_screen_end();
 }

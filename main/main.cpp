@@ -43,8 +43,10 @@ extern "C" void app_main(void)
     esp_event_loop_create_default();   /* 事件循环 (WiFi + HTTP 依赖) */
 
     /* ---- 电机 ---- */
+    
     step_init();  /* GPIO + GPTimer + ESC PWM + 舵机 PWM + 继电器 */
     ESP_LOGI(TAG, "Motor init done");
+    dough_esc_init();  /* 面粉电机 ESC 校准 (5% duty) */
 
     /* ---- 串口 (UART0, 115200bps) ---- */
     uart_init();

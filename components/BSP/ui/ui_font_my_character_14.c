@@ -15,7 +15,7 @@
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
     #include "lvgl.h"
 #else
-    #include "lvglvgl.h"
+    #include "lvgl.h"
 #endif
 
 #ifndef UI_FONT_MY_CHARACTER_14

@@ -86,8 +86,8 @@ typedef struct _objects_t {
     lv_obj_t *back_mixer;
     lv_obj_t *fanhui_7;
     lv_obj_t *stop_1;
-    lv_obj_t *timer_sec;
-    lv_obj_t *timer_min;
+    lv_obj_t *stop_2;
+    lv_obj_t *next;
     lv_obj_t *ok_finish;
     lv_obj_t *ok_step_out;
     lv_obj_t *obj11;

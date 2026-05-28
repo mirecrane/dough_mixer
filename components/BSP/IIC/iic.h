@@ -13,8 +13,8 @@ extern "C" {
 
 // 电容触摸 CTP 接口引脚（I2C 通信 + 控制）
 
-#define CTP_SCL         GPIO_NUM_21    // 电容触摸 I2C 时钟引脚
-#define CTP_SDA         GPIO_NUM_40    // 电容触摸 I2C 数据引脚
+#define CTP_SCL         GPIO_NUM_38    // 电容触摸 I2C 时钟引脚
+#define CTP_SDA         GPIO_NUM_47    // 电容触摸 I2C 数据引脚
 #define TOUCH_I2C_NUM   I2C_NUM_1      // 触摸专用I2C总线（和其他设备不冲突）
 
 // 触摸I2C总线句柄（全局，供touch.c直接调用）

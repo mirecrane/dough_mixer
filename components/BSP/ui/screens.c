@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "time", "weight", "weight_set", "kougan", "mixer", "timer", "finish", "step_out", "step_back", "end" };
-static const char *object_names[] = { "main", "time", "weight", "weight_set", "kougan", "mixer", "timer", "finish", "step_out", "step_back", "end", "obj0", "obj1", "jiao_zi", "jiaozi", "mianbao", "obj2", "mantou", "obj3", "obj4", "obj5", "obj6", "hour", "minute", "obj7", "obj8", "back_time", "fanhui", "ok_time", "fanhui_1", "obj9", "obj10", "set_200g", "set_300g", "set_500g", "set_1000g", "weight_self", "back_weight", "fanhui_4", "ok_weight", "fanhui_8", "select_weight", "dough_add", "dough_sub", "back_weight_set", "fanhui_5", "ok_weight_set", "fanhui_9", "ruan_nuo", "shi_zhong", "jiao_jin", "back_kougan", "fanhui_6", "ok_kougan", "fanhui_10", "star_mixer", "stop", "back_mixer", "fanhui_7", "stop_1", "timer_sec", "timer_min", "ok_finish", "ok_step_out", "obj11", "ok_step_back", "obj12", "ok_finish_2", "obj13" };
+static const char *object_names[] = { "main", "time", "weight", "weight_set", "kougan", "mixer", "timer", "finish", "step_out", "step_back", "end", "obj0", "obj1", "jiao_zi", "jiaozi", "mianbao", "obj2", "mantou", "obj3", "obj4", "obj5", "obj6", "hour", "minute", "obj7", "obj8", "back_time", "fanhui", "ok_time", "fanhui_1", "obj9", "obj10", "set_200g", "set_300g", "set_500g", "set_1000g", "weight_self", "back_weight", "fanhui_4", "ok_weight", "fanhui_8", "select_weight", "dough_add", "dough_sub", "back_weight_set", "fanhui_5", "ok_weight_set", "fanhui_9", "ruan_nuo", "shi_zhong", "jiao_jin", "back_kougan", "fanhui_6", "ok_kougan", "fanhui_10", "star_mixer", "stop", "back_mixer", "fanhui_7", "stop_1", "stop_2", "next", "ok_finish", "ok_step_out", "obj11", "ok_step_back", "obj12", "ok_finish_2", "obj13" };
 
 //
 // Event handlers
@@ -278,6 +278,17 @@ static void event_handler_cb_timer_stop_1(lv_event_t *e) {
     if (event == LV_EVENT_PRESSED) {
         e->user_data = (void *)0;
         action_stop(e);
+    }
+}
+
+static void event_handler_cb_timer_stop_2(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_PRESSED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 3, 0, e);
     }
 }
 
@@ -1205,7 +1216,7 @@ void create_screen_timer() {
             // stop_1
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.stop_1 = obj;
-            lv_obj_set_pos(obj, 25, 186);
+            lv_obj_set_pos(obj, 26, 59);
             lv_obj_set_size(obj, 191, 66);
             lv_obj_add_event_cb(obj, event_handler_cb_timer_stop_1, LV_EVENT_ALL, flowState);
             lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1222,35 +1233,26 @@ void create_screen_timer() {
             }
         }
         {
-            // timer_sec
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.timer_sec = obj;
-            lv_obj_set_pos(obj, 128, 83);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text(obj, "");
-        }
-        {
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 88, 44);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "已用时：");
-        }
-        {
-            // timer_min
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.timer_min = obj;
-            lv_obj_set_pos(obj, 12, 83);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text(obj, "");
-        }
-        {
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 117, 86);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_label_set_text_static(obj, ":");
+            // stop_2
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.stop_2 = obj;
+            lv_obj_set_pos(obj, 26, 200);
+            lv_obj_set_size(obj, 191, 66);
+            lv_obj_add_event_cb(obj, event_handler_cb_timer_stop_2, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0x738a9c), LV_PART_MAIN | LV_STATE_DEFAULT);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    // next
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.next = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &ui_font_my_character_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "next");
+                }
+            }
         }
     }
     
@@ -1260,24 +1262,6 @@ void create_screen_timer() {
 void tick_screen_timer() {
     void *flowState = getFlowState(0, 6);
     (void)flowState;
-    {
-        const char *new_val = evalTextProperty(flowState, 3, 3, "Failed to evaluate Text in Label widget");
-        const char *cur_val = lv_label_get_text(objects.timer_sec);
-        if (strcmp(new_val, cur_val) != 0) {
-            tick_value_change_obj = objects.timer_sec;
-            lv_label_set_text(objects.timer_sec, new_val);
-            tick_value_change_obj = NULL;
-        }
-    }
-    {
-        const char *new_val = evalTextProperty(flowState, 5, 3, "Failed to evaluate Text in Label widget");
-        const char *cur_val = lv_label_get_text(objects.timer_min);
-        if (strcmp(new_val, cur_val) != 0) {
-            tick_value_change_obj = objects.timer_min;
-            lv_label_set_text(objects.timer_min, new_val);
-            tick_value_change_obj = NULL;
-        }
-    }
 }
 
 void create_screen_finish() {

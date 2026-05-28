@@ -16,8 +16,8 @@ extern "C" {
 #endif
 
 // ===================== 触摸引脚 =====================
-#define CTP_INT         GPIO_NUM_41    // 中断引脚
-#define CTP_RST         GPIO_NUM_42    // 复位引脚
+#define CTP_INT         GPIO_NUM_21    // 中断引脚
+#define CTP_RST         GPIO_NUM_48    // 复位引脚
 
 // 屏幕分辨率 240×320 竖屏
 #define LCD_WIDTH       240

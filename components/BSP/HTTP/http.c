@@ -1,3 +1,12 @@
+/**
+ * @file    http.c
+ * @brief   HTTP 服务器 — 网页 + REST API
+ *
+ * CMake EMBED_FILES 将 http.html 嵌入固件, 运行时直接发送二进制数据.
+ * /api/start 从 JSON body 解析 weight 参数, 创建独立 FreeRTOS 任务执行电机控制.
+ * /api/stop 销毁电机任务 + 调用 motor_emergency_stop().
+ */
+
 #include "http.h"
 #include "motor.h"
 #include "esp_http_server.h"
@@ -10,7 +19,7 @@
 
 static const char *TAG = "HTTP";
 
-/* 由 CMake EMBED_FILES 生成的符号 */
+/** 嵌入式网页二进制数据 (由 CMake EMBED_FILES 自动生成) */
 extern const unsigned char _binary_http_html_start[] asm("_binary_http_html_start");
 extern const unsigned char _binary_http_html_end[]   asm("_binary_http_html_end");
 
@@ -113,14 +122,36 @@ static esp_err_t api_stop_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* ---- POST /api/step_out — CCW 2.9圈 (推出) ---- */
+static esp_err_t api_step_out_handler(httpd_req_t *req)
+{
+    step_rotate_turns(2.9f, DIR_CCW, 1000);
+    const char *resp = "{\"status\":\"ok\"}";
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
+/* ---- POST /api/step_back — CW 2.9圈 (收回) ---- */
+static esp_err_t api_step_back_handler(httpd_req_t *req)
+{
+    step_rotate_turns(2.9f, DIR_CW, 1000);
+    const char *resp = "{\"status\":\"ok\"}";
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
 /* ---- 注册 URI ---- */
 static void register_handlers(httpd_handle_t server)
 {
     httpd_uri_t handlers[] = {
         { .uri = "/",          .method = HTTP_GET,  .handler = root_get_handler },
-        { .uri = "/api/start", .method = HTTP_POST, .handler = api_start_post_handler },
-        { .uri = "/api/status",.method = HTTP_GET,  .handler = api_status_get_handler },
-        { .uri = "/api/stop",  .method = HTTP_POST, .handler = api_stop_post_handler },
+        { .uri = "/api/start",    .method = HTTP_POST, .handler = api_start_post_handler },
+        { .uri = "/api/status",   .method = HTTP_GET,  .handler = api_status_get_handler },
+        { .uri = "/api/stop",     .method = HTTP_POST, .handler = api_stop_post_handler },
+        { .uri = "/api/step_out", .method = HTTP_POST, .handler = api_step_out_handler },
+        { .uri = "/api/step_back",.method = HTTP_POST, .handler = api_step_back_handler },
     };
     for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         httpd_register_uri_handler(server, &handlers[i]);

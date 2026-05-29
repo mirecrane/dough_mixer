@@ -1,3 +1,10 @@
+/**
+ * @file    action.cpp
+ * @brief   EEZ UI Action 函数实现 (用户编写, 不会被 EEZ Studio 覆盖)
+ *
+ * 功能: 面团重量加减、预设、启动电机(独立任务)、紧急停止(销毁任务)
+ * 注意: 所有函数用 extern "C" 包裹以匹配 actions.h 的 C 链接声明
+ */
 #include "actions.h"
 #include "vars.h"
 #include "motor.h"
@@ -66,6 +73,7 @@ void action_star_mixer(lv_event_t *e)
 {
     int32_t w = get_var_dough_weight();
     ESP_LOGI(TAG, "Start mixer, weight=%ldg", (long)w);
+    set_var_motor_running(true);
     xTaskCreate(motor_task, "motor_task", 8192,
                 (void *)(uintptr_t)w, 5, &g_motor_task_handle);
 }
@@ -78,6 +86,21 @@ void action_stop(lv_event_t *e)
         g_motor_task_handle = NULL;
     }
     motor_emergency_stop();
+    set_var_motor_running(false);
+}
+
+/** 步进电机推出 (CCW), 2.9 圈 */
+void action_step_out(lv_event_t *e)
+{
+    ESP_LOGI(TAG, "Step out: CCW 2.9 turns");
+    step_rotate_turns(2.9f, DIR_CCW, 1000);
+}
+
+/** 步进电机退回 (CW) */
+void action_step_back(lv_event_t *e)
+{
+    ESP_LOGI(TAG, "Step back: CW");
+    step_rotate_turns(2.9f, DIR_CW, 1000);
 }
 
 } /* extern "C" */

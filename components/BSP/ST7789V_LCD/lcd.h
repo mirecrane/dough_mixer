@@ -1,3 +1,7 @@
+/**
+ * @file    lcd.h
+ * @brief   ST7789V LCD 面板驱动 — SPI 接口, 240×320 竖屏
+ */
 #ifndef __ST7789V_LCD_H
 #define __ST7789V_LCD_H
 

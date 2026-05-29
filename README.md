@@ -7,16 +7,17 @@ ESP32-S3 + ST7789V LCD + FT6336U 触摸 + LVGL v9 + EEZ Studio 图形界面
 ## 目录
 
 - [硬件引脚](#硬件引脚)
+- [电机参数](#电机参数)
+- [LEDC PWM 分配](#ledc-pwm-分配)
+- [控制逻辑](#控制逻辑)
 - [项目结构](#项目结构)
 - [构建与烧录](#构建与烧录)
 - [关键配置](#关键配置)
 - [WiFi 连接](#wifi-连接)
 - [网页控制面板](#网页控制面板)
-- [串口指令](#串口指令)
-- [TCP 指令](#tcp-指令)
+- [串口 / TCP 指令](#串口--tcp-指令)
 - [HTTP API](#http-api)
 - [UI 界面](#ui-界面)
-- [电机参数](#电机参数)
 - [触摸校准](#触摸校准)
 - [常见问题](#常见问题)
 
@@ -24,40 +25,195 @@ ESP32-S3 + ST7789V LCD + FT6336U 触摸 + LVGL v9 + EEZ Studio 图形界面
 
 ## 硬件引脚
 
-### SPI LCD (ST7789V, 240×320 竖屏, SPI2)
+### SPI LCD — ST7789V (240×320, SPI2)
+
+| 信号 | GPIO | 方向 | 说明 |
+|------|------|------|------|
+| CS | 1 | OUT | 片选，低电平有效 |
+| RST | 2 | OUT | 硬件复位 |
+| DC | 42 | OUT | 数据/命令切换 |
+| MOSI | 41 | OUT | 主机发从机收 (SDI) |
+| SCK | 40 | OUT | SPI 时钟 |
+| BL | 39 | OUT | 背光控制，高电平点亮 |
+
+> GPIO 39-42 是 ESP32-S3 JTAG 引脚，如需使用需在 sdkconfig 中禁用 USB Serial/JTAG。
+
+### I2C 触摸 — FT6336U (I2C1)
 
 | 信号 | GPIO | 说明 |
 |------|------|------|
-| CS | 10 | 片选，低电平有效 |
-| RST | 11 | 硬件复位，低电平有效 |
-| DC | 12 | 数据/命令切换，高=数据 |
-| MOSI (SDI) | 13 | 主机发从机收 |
-| SCK | 14 | SPI 时钟 |
-| BL | 1 | 背光控制，高电平点亮 |
-| MISO | 未连接 | ST7789V 为纯写设备 |
-
-### I2C 触摸 (FT6336U, I2C1)
-
-| 信号 | GPIO | 说明 |
-|------|------|------|
-| SCL | 21 | I2C 时钟 |
-| SDA | 40 | I2C 数据 |
-| INT | 41 | 触摸中断 |
-| RST | 42 | 触摸复位，低电平复位 |
+| SCL | 38 | I2C 时钟 |
+| SDA | 47 | I2C 数据 |
+| INT | 21 | 触摸中断 |
+| RST | 48 | 触摸复位 |
 
 ### 电机
 
-| 电机 | 信号 | GPIO | 类型 |
-|------|------|------|------|
-| 步进电机 | STP | 4 | 脉冲输出 |
-| | DIR | 5 | 方向控制 |
-| | EN | 6 | 使能（低有效） |
-| 面粉电机 | Dough PWM | 15 | ESC (50Hz PWM) |
-| 搅拌电机 | Mixer PWM | 9 | ESC (50Hz PWM) |
+| 电机 | 信号 | GPIO | 驱动方式 |
+|------|------|------|---------|
+| 步进电机 | STP | 4 | GPTimer 脉冲输出 |
+| | DIR | 5 | GPIO 方向控制 |
+| | EN | 6 | GPIO 使能 (低有效) |
+| 面粉电机 | Dough PWM | 15 | ESC 50Hz PWM |
+| 搅拌电机 | Mixer PWM | 9 | ESC 50Hz PWM |
 | 水泵 | Pump | 7 | 继电器 |
 | 研磨电机 | Grinder | 16 | 继电器 |
+| 电磁铁 | Magnet | 18 | 继电器 |
 | 转向舵机 | Steering | 8 | 50Hz PWM |
 | 推动舵机 | Push | 3 | 50Hz PWM |
+
+---
+
+## 电机参数
+
+### 步进电机
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 步距角 | 1.8° | 200 步/圈 |
+| 微步细分 | 8 | A4988 驱动 |
+| 脉冲/圈 | 1600 | 200 × 8 |
+| 每脉冲角度 | 0.225° | 360 / 1600 |
+| 脉冲频率 | 1 kHz | speed_us=1000 |
+| 转速 | 37.5 RPM | 1000 / 1600 × 60 |
+| 2.9 圈耗时 | ~4.6 秒 | 推出/收回面粉盆 |
+
+### 面粉电机 (无刷 ESC)
+
+| 参数 | 值 |
+|------|-----|
+| PWM 频率 | 50Hz |
+| 停止/校准 duty | 5% (1ms 脉宽) |
+| 运行 duty | 8% (1.6ms 脉宽) |
+| 每循环 ON 时间 | 10 秒 |
+| 循环间隔 OFF | 5 秒 |
+| 出粉速度 | ~5 克/秒 |
+
+### 搅拌电机 (无刷 ESC)
+
+| 参数 | 值 |
+|------|-----|
+| PWM 频率 | 50Hz |
+| 停止/校准 duty | 5% (1ms 脉宽) |
+| 运行 duty | 9% (1.8ms 脉宽) |
+| 默认搅拌时间 | 1 分钟 |
+
+### 水泵 (继电器)
+
+| 参数 | 值 |
+|------|-----|
+| 控制方式 | GPIO 继电器 |
+| 出水速度 | ~10 克/秒 |
+| 水量计算 | weight / 2 (面粉:水=2:1) |
+
+### 舵机
+
+| 参数 | 值 |
+|------|-----|
+| PWM 频率 | 50Hz |
+| 角度范围 | 0° ~ 180° |
+| 分辨率 | 14 位 (16384 级) |
+
+### 电磁铁 (继电器)
+
+| 参数 | 值 |
+|------|-----|
+| GPIO | 18 |
+| 控制方式 | GPIO 继电器 |
+| 作用 | 和面过程固定面粉盆, 防止移位 |
+
+---
+
+## LEDC PWM 分配
+
+| 定时器 | 通道 | 外设 | GPIO |
+|--------|------|------|------|
+| LEDC_TIMER_0 | CH0 | 面粉 ESC | 15 |
+| LEDC_TIMER_0 | CH1 | 搅拌 ESC | 9 |
+| LEDC_TIMER_1 | CH0 | 转向舵机 | 8 |
+| LEDC_TIMER_1 | CH1 | 推动舵机 | 3 |
+
+> 定时器 0: 面粉+搅拌 ESC 共用 (50Hz, 14-bit)
+> 定时器 1: 舵机专用 (50Hz, 14-bit)
+
+---
+
+## 控制逻辑
+
+### 协同控制流水线
+
+`motor_coordinated_control_ui_http(weight)` 按顺序执行 6 步:
+
+```
+步骤1: 电磁铁 ON → 面粉电机循环 (cycles × 10s ON + 5s OFF)
+步骤2: 水泵 (根据水量计算时长)
+步骤3: 研磨电机 10s
+步骤4: 舵机协同动作序列 (~2.5s)
+步骤5: 搅拌电机 1 分钟
+步骤6: 电磁铁 OFF
+```
+
+步进电机的推出/收回通过独立的 `action_step_out` / `action_step_back` 控制 (网页第7/8页)。
+
+每步之间检查 `g_emergency_stop` 标记，置位则提前退出。
+
+### 重量 → 参数转换
+
+```
+面粉:水 = 2:1
+
+cycles = (weight + 49) / (DOUGH_G_PER_SEC × 10)
+       = (weight + 49) / 50 = 向上取整
+
+pump_time = (weight / 2) / WATER_G_PER_SEC × 1000 (毫秒)
+         = weight / 20 (秒)
+
+mixer_minutes = 1 (固定)
+```
+
+示例:
+
+| 重量 | 循环次数 | 水泵时长 | 面粉耗时 | 搅拌 |
+|------|---------|---------|---------|------|
+| 200g | 4 | 10s | ~60s | 1min |
+| 500g | 10 | 25s | ~150s | 1min |
+| 1000g | 20 | 50s | ~300s | 1min |
+
+### 网页流程
+
+```
+第1页 选面食种类 → 第2页 选时间 → 第3页 选重量 → 第4页 选口感
+→ 第5页 确认参数 → 点「开始和面」
+
+→ POST /api/start {weight} → 电机运行 (后台)
+→ 第6页 运行监控 (计时+状态)
+
+→ 和面完成 → 发酵倒计时 10s
+→ 第7页「推出面粉盆」→ POST /api/step_out → CCW 2.9 圈
+→ 第8页「收回面粉盆」→ POST /api/step_back → CW 2.9 圈
+→ 第9页「恭喜完成」→ 返回首页
+```
+
+### EEZ UI 流程
+
+```
+EEZ UI (触摸屏):
+  选面食(装饰) → 选时间(装饰) → 选重量 → 自定义重量 → 选口感(装饰)
+  → 点「开始和面」
+  → action_star_mixer() → xTaskCreate(motor_task)
+  → motor_coordinated_control_ui_http(weight)
+  → 跳转 Mixer 监控页 → Timer 计时页 → Finish 完成页
+  → Step Out 推出面粉盆 → action_step_out (CCW 2.9圈)
+  → Step Back 收回面粉盆 → action_step_back (CW 2.9圈)
+  → End 结束页 → 返回 Main
+  → 随时点「紧急停止」→ vTaskDelete(motor_task) + motor_emergency_stop()
+```
+
+### 紧急停止机制
+
+1. `g_emergency_stop = true` → 协同控制每步检查后提前返回
+2. `vTaskDelete(motor_task_handle)` → 从 UI/HTTP 强制终止电机任务
+3. `motor_emergency_stop()` → 逐一停止所有电机硬件
 
 ---
 
@@ -66,43 +222,28 @@ ESP32-S3 + ST7789V LCD + FT6336U 触摸 + LVGL v9 + EEZ Studio 图形界面
 ```
 dough_mixer/
 ├── main/
-│   ├── main.cpp            # 应用入口，初始化所有外设
+│   ├── main.cpp              # 应用入口, 初始化所有外设
 │   ├── CMakeLists.txt
-│   └── idf_component.yml   # 组件依赖声明
+│   └── idf_component.yml     # 组件依赖
 ├── components/BSP/
-│   ├── CMakeLists.txt
-│   ├── SPI/                # SPI 总线 (spi.h/spi.c)
-│   ├── ST7789V_LCD/        # LCD 面板驱动 (lcd.h/lcd.c)
-│   ├── IIC/                # I2C 总线 (iic.h/iic.c)
-│   ├── FT6336U_TOUCH/      # 触摸驱动 (touch.h/touch.c)
-│   ├── LVGL_UI/            # LVGL 显示+触摸注册 (lvgl_ui.h/lvgl_ui.c)
-│   ├── MOTOR/              # 电机控制 (motor.h/motor.c)
-│   ├── GPTIM/              # 通用定时器，步进脉冲 (gptim.h/gptim.c)
-│   ├── UART/               # 串口指令解析 (uart.h/uart.c)
-│   ├── WIFI/               # WiFi AP + TCP 服务器 (wifi.h/wifi.c)
-│   ├── HTTP/               # HTTP 服务器 + 网页 (http.h/http.c/http.html)
-│   └── ui/                 # EEZ Studio 生成的 UI 代码
-│       ├── ui.h / ui.c         # UI 入口
-│       ├── screens.h / screens.c  # 屏幕定义
-│       ├── actions.h            # Action 声明 (EEZ 生成)
-│       ├── action.cpp           # Action 实现 (用户编写)
-│       ├── vars.h               # 变量声明 (EEZ 生成)
-│       ├── vars.cpp             # 变量实现 (用户编写)
-│       ├── eez-flow.h / eez-flow.cpp  # EEZ Flow 框架
-│       └── ui_font_my_character_*.c  # 自定义字体
-├── lv_conf.h               # LVGL v9 配置
-├── partitions.csv          # 分区表 (factory 2MB)
-├── sdkconfig               # ESP-IDF 项目配置
-└── CMakeLists.txt          # 根 CMake
+│   ├── SPI/                  # SPI2 总线 (LCD 专用)
+│   ├── ST7789V_LCD/          # LCD 面板驱动
+│   ├── IIC/                  # I2C 总线 (触摸专用)
+│   ├── FT6336U_TOUCH/        # 触摸驱动 (兼容 FT5x06)
+│   ├── LVGL_UI/              # LVGL 显示+触摸注册
+│   ├── MOTOR/                # 电机全控制
+│   ├── GPTIM/                # GPTimer 脉冲发生器 (步进)
+│   ├── UART/                 # 串口指令
+│   ├── WIFI/                 # WiFi AP + TCP 服务器
+│   ├── HTTP/                 # HTTP 服务器 + 网页
+│   └── ui/                   # EEZ Studio 生成 + 用户编写
+│       ├── action.cpp        # Action 实现 (不被 EEZ 覆盖)
+│       └── vars.cpp          # 变量实现 (不被 EEZ 覆盖)
+├── lv_conf.h                 # LVGL v9 配置
+├── partitions.csv            # 分区表 (factory 2MB)
+├── sdkconfig                 # ESP-IDF 配置
+└── CMakeLists.txt
 ```
-
-### 组件依赖 (idf_component.yml)
-
-| 组件 | 版本 | 用途 |
-|------|------|------|
-| lvgl/lvgl | ^9.4.0 | LVGL 图形库 |
-| espressif/esp_lvgl_port | ^2.8.0 | LVGL 到 ESP-IDF 的移植层 |
-| espressif/esp_lcd_touch_ft5x06 | ==1.1.0 | FT6336U 触摸驱动 (兼容 FT5x06) |
 
 ---
 
@@ -114,47 +255,24 @@ dough_mixer/
 - ESP32-S3 芯片
 - 16MB Flash
 
-### 首次构建
-
 ```bash
 idf.py set-target esp32s3
 idf.py reconfigure
-idf.py build
-idf.py flash monitor
-```
-
-### 增量构建
-
-```bash
 idf.py build flash monitor
 ```
-
-> 修改 `sdkconfig` 后需 `idf.py reconfigure`；EEZ Studio 重新导出 UI 后直接 `idf.py build` 即可。
 
 ---
 
 ## 关键配置
 
-### sdkconfig
-
-| 配置项 | 值 | 说明 |
-|--------|-----|------|
-| Flash Size | 16MB | 固件约 1.8MB |
-| Partition Table | Custom (partitions.csv) | factory 2MB |
-| FreeRTOS | 双核 | LVGL + WiFi 各占一核 |
-| PSRAM | 未启用 | — |
-
-### lv_conf.h
-
-| 配置项 | 值 | 说明 |
-|--------|-----|------|
-| LV_COLOR_DEPTH | 16 | RGB565 |
-| LV_MEM_SIZE | 64KB | LVGL 堆大小 |
-| LV_DPI_DEF | 130 | 默认 DPI |
-| LV_FONT_MONTSERRAT_14 | 1 | 启用 |
-| LV_FONT_MONTSERRAT_18 | 1 | 启用 |
-| LV_FONT_MONTSERRAT_20 | 1 | 启用 |
-| LV_FONT_SIMSUN_16_CJK | 1 | 中文显示 |
+| 文件 | 配置项 | 值 |
+|------|--------|-----|
+| sdkconfig | Flash Size | 16MB |
+| sdkconfig | Partition Table | Custom (partitions.csv, factory 2MB) |
+| sdkconfig | USB Serial/JTAG | 禁用 (释放 GPIO 39-42) |
+| lv_conf.h | Color Depth | 16 (RGB565) |
+| lv_conf.h | LV_MEM_SIZE | 64KB |
+| lv_conf.h | 字体 | Montserrat 14/18/20 + Simsun 16 CJK + 自定义 5 种 |
 
 ---
 
@@ -165,99 +283,78 @@ idf.py build flash monitor
 | SSID | **dough_mixer** |
 | 密码 | **12345678** |
 | 加密 | WPA2-PSK |
-| 信道 | 1 |
 | IP | **192.168.4.1** |
-| 最大连接数 | 4 |
+| DHCP 范围 | 192.168.4.2 ~ 192.168.4.254 |
 
-### TCP 客户端工具
-
-| 平台 | 推荐工具 |
-|------|---------|
-| Android | TCP Client |
-| iOS | TCP Telnet, Mocha Telnet |
-| Windows | Putty (Raw TCP), netcat |
-| Mac / Linux | `nc 192.168.4.1 8080` |
-
-| 端口 | 服务 | 用途 |
+| 端口 | 协议 | 用途 |
 |------|------|------|
-| 80 | HTTP | 网页控制面板 |
+| 80 | HTTP | 网页控制面板 + REST API |
 | 8080 | TCP | 调试命令行 |
 
 ---
 
 ## 网页控制面板
 
-浏览器打开 `http://192.168.4.1`，选择面食种类→时间→重量→口感→确认→开始。重量选择支持预设 (200/300/500/800/1000g) 和自定义。口感/种类/时间选项为装饰性 UI，不影响硬件执行，只有重量参数真正传递给电机。
+浏览器打开 `http://192.168.4.1`。
+
+9 页流程: 选种类→选时间→选重量→选口感→确认→监控→推出→收回→完成。
+
+发酵时间在 `http.html` 中配置:
+
+```js
+let fermentingDuration = 10;  // 秒
+
+const fermentingDurations = {
+    'dumpling': 10,
+    'bread': 10,
+    'mantou': 10
+};
+```
 
 ---
 
-## 串口指令
+## 串口 / TCP 指令
 
-串口 UART0（通过 USB 转串口连接），115200bps，8N1。
+串口 (UART0, 115200bps 8N1) 和 TCP (192.168.4.1:8080) 共用指令格式。
+**大小写不敏感**，每条以回车结束。
 
-**大小写不敏感**，每条指令以回车 (\\r 或 \\n) 结束。指令之间会互相阻断——新指令到达时会先停止上一个正在运行的定时任务。
+### 全局
 
-### 全局控制
-
-| 指令 | 说明 | 示例 |
-|------|------|------|
-| `STOP` | 紧急停止所有电机 | `STOP` |
-| `H` | 协同控制（默认参数，面粉5循环+水泵10s+研磨10s+舵机+搅拌1min+步进正反1圈） | `H` |
+| 指令 | 说明 |
+|------|------|
+| `STOP` | 紧急停止所有电机 |
+| `H` | 协同控制 (默认参数) |
 
 ### 步进电机 `M`
 
-| 指令 | 参数 | 说明 | 示例 |
-|------|------|------|------|
-| `M A <角度>` | 角度 (度) | 正转指定角度，速度 1000μs/脉冲 | `M A 90` |
-| `M B <角度>` | 角度 (度) | 反转指定角度 | `M B 45` |
-| `M F <圈数>` | 圈数 | 正转指定圈数 | `M F 2.5` |
-| `M R <圈数>` | 圈数 | 反转指定圈数 | `M R 1.0` |
-| `M START` | — | 启动自动往返模式 (正180°→停0.5s→反180°) | `M START` |
-| `M STOP` | — | 停止自动往返模式 | `M STOP` |
-
-> 步进电机参数: 200步/圈 × 8微步 = 1600脉冲/圈
+| 指令 | 说明 | 示例 |
+|------|------|------|
+| `M A <角度>` | CW 转角度 | `M A 90` |
+| `M B <角度>` | CCW 转角度 | `M B 45` |
+| `M F <圈数>` | CW 转圈数 | `M F 2.5` |
+| `M R <圈数>` | CCW 转圈数 | `M R 1.0` |
+| `M START` | 自动往返模式 | `M START` |
+| `M STOP` | 停止往返 | `M STOP` |
 
 ### 舵机
 
-| 指令 | 参数 | 说明 | 示例 |
-|------|------|------|------|
-| `SS A <角度>` | 0~180° | 转向舵机 | `SS A 90` |
-| `SP A <角度>` | 0~180° | 推动舵机 | `SP A 45` |
+| 指令 | 说明 | 示例 |
+|------|------|------|
+| `SS A <角度>` | 转向舵机 0~180° | `SS A 90` |
+| `SP A <角度>` | 推动舵机 0~180° | `SP A 45` |
 
-### 定时电机
+### 定时电机 (创建后台任务, 到时自动停止)
 
-这些指令会创建独立 FreeRTOS 任务，运行指定时间后自动停止。
+| 指令 | 单位 | 示例 |
+|------|------|------|
+| `P <秒>` | 水泵 | `P 10` |
+| `D <秒>` | 面粉电机 | `D 15` |
+| `G <秒>` | 研磨电机 | `G 20` |
+| `MI <分钟>` | 搅拌电机 | `MI 5` |
 
-| 指令 | 参数 | 单位 | 说明 | 示例 |
-|------|------|------|------|------|
-| `P <秒>` | 秒数 | 秒 | 水泵 | `P 10` |
-| `D <秒>` | 秒数 | 秒 | 面粉电机 (ESC 8% duty) | `D 15` |
-| `G <秒>` | 秒数 | 秒 | 研磨电机 | `G 20` |
-| `MI <分钟>` | 分钟数 | 分钟 | 搅拌电机 (ESC 9% duty) | `MI 5` |
+### TCP 示例
 
-### 串口响应示例
-
-```
-> M F 2.0
-Stepper rotated 2.0 turns: SUCCESS
-
-> P 10
-Pump starting for 10 seconds...
-Pump stopped.
-
-> STOP
-Emergency Stop All: SUCCESS
-```
-
----
-
-## TCP 指令
-
-TCP 连接到 `192.168.4.1:8080`，指令格式与串口**完全相同**。
-
-响应通过 TCP socket 返回（不在串口监视器中显示），其他行为一致。
-
-```
+```bash
 $ nc 192.168.4.1 8080
 M F 2.0
 Stepper rotated 2.0 turns: SUCCESS
@@ -269,196 +366,112 @@ Emergency Stop All: SUCCESS
 
 ## HTTP API
 
-### `GET /`
+### `GET /` — 网页
 
-返回网页控制面板 HTML。
+### `POST /api/start` — 启动和面
 
-### `POST /api/start`
+请求: `{"weight": 500}`
+响应: `{"status":"ok","state":"kneading","weight":500}`
 
-启动电机协同控制（使用传入重量参数）。
+### `GET /api/status` — 查询状态
 
-**请求:**
-```json
-{"weight": 500}
-```
-`weight`: 面团总重量（克），最小值 50
+响应: `{"state":"idle"}` — idle | kneading
 
-**响应 (成功):**
-```json
-{"status":"ok","state":"kneading","weight":500}
-```
+### `POST /api/stop` — 紧急停止
 
-**响应 (忙碌):**
-```json
-{"status":"busy","state":"kneading"}
-```
+响应: `{"status":"ok","state":"idle"}`
 
-### `GET /api/status`
+### `POST /api/step_out` — 推出面粉盆 (CCW 2.9圈)
 
-查询当前电机状态。
+响应: `{"status":"ok"}`
 
-**响应:**
-```json
-{"state":"idle"}
-```
+### `POST /api/step_back` — 收回面粉盆 (CW 2.9圈)
 
-`state` 可能值:
-| 值 | 含义 |
-|-----|------|
-| `idle` | 空闲，可启动 |
-| `kneading` | 正在和面 |
-
-### `POST /api/stop`
-
-紧急停止。会销毁电机任务并执行硬件停止。
-
-**响应:**
-```json
-{"status":"ok","state":"idle"}
-```
+响应: `{"status":"ok"}`
 
 ---
 
 ## UI 界面
 
-EEZ Studio 构建的 LVGL 界面，包含 6 个屏幕：
+EEZ Studio 构建，11 页:
 
-| 页面 | 名称 | 功能 |
+| 页 | 名称 | ID | 功能 |
+|----|------|-----|------|
+| 1 | Main | `SCREEN_ID_MAIN` | 选面食种类 (装饰) |
+| 2 | Time | `SCREEN_ID_TIME` | 选时间 (装饰) |
+| 3 | Weight | `SCREEN_ID_WEIGHT` | 选重量 200~1000g + 自定义 |
+| 4 | Weight Set | `SCREEN_ID_WEIGHT_SET` | 自定义重量值输入 |
+| 5 | Kougan | `SCREEN_ID_KOUGAN` | 选口感 (装饰) |
+| 6 | Mixer | `SCREEN_ID_MIXER` | 运行监控 + 紧急停止 |
+| 7 | Timer | `SCREEN_ID_TIMER` | 计时显示页面 |
+| 8 | Finish | `SCREEN_ID_FINISH` | 和面完成提示 |
+| 9 | Step Out | `SCREEN_ID_STEP_OUT` | 推出面粉盆按钮 |
+| 10 | Step Back | `SCREEN_ID_STEP_BACK` | 收回面粉盆按钮 |
+| 11 | End | `SCREEN_ID_END` | 完成, 返回首页 |
+
+> 只有重量参数实际传给电机; 种类/时间/口感为装饰性 UI。
+
+### EEZ 变量
+
+| 变量 | 类型 | getter | 说明 |
+|------|------|--------|------|
+| `dough_weight` | int32 | `get_var_dough_weight` | 面团重量 (克), 实际传给电机 |
+| `motor_running` | bool | `get_var_motor_running` | 电机运行状态 |
+| `timer_sec` | int32 | `get_var_timer_sec` | 计时器秒数 (空桩) |
+| `timer_min` | int32 | `get_var_timer_min` | 计时器分钟 (空桩) |
+
+### EEZ Action 函数
+
+| 函数 | 触发 | 动作 |
 |------|------|------|
-| 1 | Main | 选择面食种类 (饺子/面包/馒头) |
-| 2 | Time | 选择食用时间 (早餐/午餐/晚餐/自定义) |
-| 3 | Weight | 选择面团重量 (200~1000g 预设 + 自定义) |
-| 4 | Texture | 选择口感偏好 (软糯/适中/有嚼劲) |
-| 5 | Confirm | 确认参数汇总，点击"开始和面" |
-| 6 | Mixer | 运行监控画面，显示状态+紧急停止按钮 |
+| `action_dough_sub` | 重量-按钮 | dough_weight -= 50 |
+| `action_dough_add` | 重量+按钮 | dough_weight += 50 |
+| `action_set_200g` ~ `_1000g` | 预设按钮 | 设固定值 |
+| `action_star_mixer` | 开始和面 | 读 weight → 创建 FreeRTOS 任务 → `motor_coordinated_control_ui_http(weight)` |
+| `action_stop` | 紧急停止 | `vTaskDelete` 杀电机任务 + `motor_emergency_stop()` |
+| `action_step_out` | 推出按钮 | `step_rotate_turns(2.9f, DIR_CCW, 1000)` |
+| `action_step_back` | 收回按钮 | `step_rotate_turns(2.9f, DIR_CW, 1000)` |
 
-> 第 1/2/4 页的选项为装饰性 UI，不影响硬件。只有第 3 页的重量参数 `dough_weight` 实际传给电机。
+### EEZ Studio 覆盖规则
 
-### 用户编写的文件
-
-以下文件不会被 EEZ Studio 覆盖（不在生成列表中）：
+`EEZ Build` 会覆盖 `ui/` 下大部分文件。以下用户编写文件**不会被覆盖**:
 
 | 文件 | 内容 |
 |------|------|
-| `ui/action.cpp` | Action 函数实现（加减重量、预设、启动、停止） |
-| `ui/vars.cpp` | 全局变量实现（dough_weight 及其 getter/setter） |
+| `action.cpp` | Action 函数实现 |
+| `vars.cpp` | 变量实现 + 初始化 |
 
-### EEZ Studio 重新导出后
-
-`EEZ Studio Build` 会覆盖 `ui/` 下大部分 `.h` 和 `.c` 文件。**不会被覆盖**的文件只有 `action.cpp` 和 `vars.cpp`。
-
-但 `vars.h` 会被覆盖，如果需要在其中添加声明（如 `vars_init()`），每次导出后需要手动补回。
-
----
-
-## 电机参数
-
-### 步进电机
-
-| 参数 | 值 | 说明 |
-|------|-----|------|
-| 基础步数/圈 | 200 | 1.8°/步 |
-| 微步 | 8 | A4988 驱动 |
-| 脉冲/圈 | 1600 | 200×8 |
-| 度/脉冲 | 0.225° | 360/1600 |
-
-### 面粉电机 (ESC PWM)
-
-| 参数 | 值 |
-|------|-----|
-| 频率 | 50Hz |
-| 停止/初始化 duty | 5% (1ms) |
-| 运行 duty | 8% (1.6ms) |
-| 每循环运行时间 | 10s |
-| 循环间隔 | 5s |
-| 出粉速度 | ~5g/s |
-
-### 搅拌电机 (ESC PWM)
-
-| 参数 | 值 |
-|------|-----|
-| 频率 | 50Hz |
-| 停止/初始化 duty | 5% (1ms) |
-| 运行 duty | 9% (1.8ms) |
-| 默认搅拌时间 | 2 分钟 |
-
-### 重量→循环转换
-
-```
-cycles = weight ÷ (5g/s × 10s) = weight ÷ 50
-mixer_minutes = 2 (固定)
-```
+`vars.h` 会被覆盖, 如需添加声明需在导出后手动补回。
 
 ---
 
 ## 触摸校准
 
-触摸坐标通过 `esp_lcd_touch_config_t.flags` 调整：
+若触摸位置和显示不对齐, 调整 `touch.c`:
 
 ```c
 .flags = {
-    .swap_xy = 0,    // 是否交换 XY 轴
-    .mirror_x = 0,   // 是否水平翻转
-    .mirror_y = 0,   // 是否垂直翻转
+    .swap_xy = 0,    // 交换 XY
+    .mirror_x = 0,   // 水平翻转
+    .mirror_y = 0,   // 垂直翻转
 },
 ```
 
-若触摸位置和显示位置对不上，调整上述标志使其与 LCD 的 `mirror`/`swap_xy` 设置匹配。
+同时确保 `lcd.c` 中的 `mirror`/`swap_xy` 设置与触摸匹配。
 
 ---
 
 ## 常见问题
 
-### 屏幕白屏
-
-1. 检查 SPI 引脚连接 (CS=10, RST=11, DC=12, MOSI=13, SCK=14)
-2. 确认背光引脚 `LCD_BL` (GPIO 1) 接对且输出高电平
-3. 尝试在 `lcd.c` 中加上 `esp_lcd_panel_invert_color(lcd_panel, true)`
-4. 查看串口日志确认 `LCD init done` 和 `LVGL 显示注册成功`
-
-### 屏幕镜像/方向不对
-
-1. `lcd.c` 中调整 `esp_lcd_panel_mirror(lcd_panel, x, y)` 的布尔值
-2. `lcd.c` 中调整 `esp_lcd_panel_swap_xy(lcd_panel, true/false)`
-3. `lvgl_ui.c` 中调整 `.rotation.swap_xy` / `.rotation.mirror_x` / `.rotation.mirror_y`
-4. 同时调整 `touch.c` 中对应的 `mirror_x/mirror_y`
-
-### 触摸不响应 / 位置偏移
-
-1. 检查 I2C 引脚 (SCL=21, SDA=40) 和中断/复位引脚 (INT=41, RST=42)
-2. 确认串口有 `FT6336U 触摸初始化成功` 日志
-3. 确保 `touch.c` 中的 `mirror_x/mirror_y` 与 LCD 设置匹配
-
-### 紧急停止后电机又启动
-
-旧的电机任务仍在 `vTaskDelay` 中等待。现已改用 `vTaskDelete` 直接销毁电机任务，如果还有问题检查 `action.cpp` 中 `action_stop` 是否调用 `vTaskDelete(g_motor_task_handle)`。
-
-### WiFi 连接不上
-
-1. 串口确认 `wifi_init_softap finished` 日志
-2. 确认 `sdkconfig` 中 `CONFIG_USJ_ENABLE_USB_SERIAL_JTAG` 未与 GPIO 39-42 冲突
-3. 确认 WiFi SSID 为 `dough_mixer`，密码 `12345678`，加密 WPA2
-
-### 固件太大烧录失败
-
-使用 `partitions.csv`（factory 2MB），确认 `sdkconfig` 中 Flash Size = 16MB。
-
-### TCP 连接失败
-
-确认 `main.cpp` 中有 `xTaskCreate(tcp_server_task, ...)`，且 `wifi_init_softap()` 已先执行。
-
-### GPIO 不可用警告
-
-```
-W ledc: GPIO 15/9 is not usable, maybe conflict with others
-```
-
-尝试更换面粉/搅拌电机 PWM 引脚到空闲 GPIO（如 47, 48）。
-
-### UART 收到乱码
-
-```
-UART: Executing command: [�]
-```
-
-UART 引脚 (TX=17, RX=18) 可能有电平漂移或干扰。确保引脚电平稳定，可在 `uart_init` 中配置内部上拉。
+| 问题 | 排查方向 |
+|------|---------|
+| 屏幕白屏 | 检查 SPI 接线, 串口确认 `LCD init done` |
+| 屏幕镜像 | 调整 `lcd.c` 中 `esp_lcd_panel_mirror(x,y)` |
+| 触摸无响应 | 确认 I2C 接线, 串口应有 `FT6336U 初始化成功` |
+| 触摸偏移 | 对齐 `touch.c` 和 `lcd.c` 的 mirror 设置 |
+| WiFi 搜不到 | 确认 `pmf_cfg.required = false`, 串口应有 `wifi_init_softap finished` |
+| TCP 连不上 | 确认 `main.cpp` 中有 `xTaskCreate(tcp_server_task, ...)` |
+| 电机不转 | 串口 `ledc: GPIO xx is not usable` → 引脚冲突, 换空闲 GPIO |
+| 紧急停止不生效 | UI 是独立任务, 确认 `action_stop` 中调了 `vTaskDelete` |
+| EEZ build 后报错 | `ui.c` 需要 `(void *)` 转换函数指针, `-fpermissive` 已设 |
+| 固件超 1MB | 使用 `partitions.csv` (factory 2MB), Flash Size=16MB |

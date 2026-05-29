@@ -20,6 +20,12 @@ enum FlowGlobalVariables {
 
 extern int32_t get_var_dough_weight();
 extern void set_var_dough_weight(int32_t value);
+extern bool get_var_motor_running();
+extern void set_var_motor_running(bool value);
+extern int32_t get_var_timer_sec();
+extern void set_var_timer_sec(int32_t value);
+extern int32_t get_var_timer_min();
+extern void set_var_timer_min(int32_t value);
 
 void vars_init();
 

@@ -1,3 +1,14 @@
+/**
+ * @file    http.h
+ * @brief   HTTP 服务器 — 网页控制面板 + REST API
+ *
+ * 端点:
+ *   GET  /           返回嵌入式网页 (http.html)
+ *   POST /api/start  启动电机 (body: {"weight": 500})
+ *   GET  /api/status 查询电机状态 ({"state":"idle"|"kneading"})
+ *   POST /api/stop   紧急停止
+ */
+
 #ifndef __HTTP_H__
 #define __HTTP_H__
 
@@ -5,15 +16,7 @@
 extern "C" {
 #endif
 
-/**
- * @brief 启动 HTTP 服务器
- *
- * 在端口 80 上启动 HTTP 服务器，提供和面机控制网页和 API：
- *   GET  /            — 返回控制面板网页
- *   POST /api/start   — 启动 motor_coordinated_control()
- *   GET  /api/status  — 返回电机状态 JSON
- *   POST /api/stop    — 调用 motor_emergency_stop()
- */
+/** 启动 HTTP 服务器 (端口 80) */
 void http_server_start(void);
 
 #ifdef __cplusplus

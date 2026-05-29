@@ -260,7 +260,6 @@ void dough_esc_init_and_start(void)
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     ESP_LOGI(TAG, "Dough Motor ESC Started: Setting 8%% duty...");
-    magnet_stop();
     ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH, duty_8));
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH));
 }
@@ -269,6 +268,7 @@ void dough_esc_stop(void)
 {
     uint32_t duty_5 = 819;
     ESP_LOGI(TAG, "Dough Motor ESC Stopping: Setting 5%% duty...");
+    magnet_stop();
     ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH, duty_5));
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, DOUGH_LEDC_CH));
 }
@@ -440,12 +440,12 @@ void push_servo_set_angle(float angle)
 
 void servo_coordinated_control(void)
 {
-    /*
-    // 1. 初始状态：两个舵机都在 0°
+    
+    //1. 初始状态：两个舵机都在 0°
     steering_servo_set_angle(0.0f);
     push_servo_set_angle(0.0f);
     vTaskDelay(pdMS_TO_TICKS(500)); // 等待舵机到位
-    */
+    
 
     // 2. 流程第1步：push 转 90° → 立刻复位
     ESP_LOGI(TAG, "Servo Step 1: Push to 90° then reset");
@@ -527,12 +527,12 @@ void motor_coordinated_control_ui_http(uint32_t weight)
     // 根据面粉重量计算各个电机的工作时间和步进电机的转数
     //面粉:水=2:1, 研磨时间和搅拌时间也根据重量线性调整，步进电机转数根据重量调整
     motor_command_t cmd = {
-        .cycle_times = (weight + 49) / (DOUGH_G_PER_SEC * 10), // 粗略估算每10秒5克，向上取整
+        .cycle_times = 4,//(weight + 49) / (DOUGH_G_PER_SEC * 10), // 粗略估算每10秒5克，向上取整
         .on_time_ms = 10000,
-        .off_time_ms = 5000,
-        .pump_work_times_ms = (weight / 2) / (WATER_G_PER_SEC) * 1000, // 水泵时间根据水量调整
-        .grinder_work_times_ms = 10000,
-        .mixer_work_times_min = 1,
+        .off_time_ms = 10000,
+        .pump_work_times_ms = 10000,//(weight / 2) / (WATER_G_PER_SEC) * 1000, // 水泵时间根据水量调整
+        .grinder_work_times_ms = 30000,
+        .mixer_work_times_min = 7,
         .step_turns = 1.0f
     };
     ESP_LOGI(TAG, "Coordinated (UI/HTTP): cycles=%u, pump=%lums, grinder=%lums, mixer=%lumin, step=%.1f turns",

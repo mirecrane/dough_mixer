@@ -1396,7 +1396,7 @@
                     showToast('请先确认参数再启动', true);
                     return;
                 }
-                if (machineState !== 'idle' && toPage !== 6 && currentPage === 6) {
+                if (machineState !== 'idle' && machineState !== 'done' && toPage !== 6 && currentPage === 6) {
                     showToast('运行中，请先停止', true);
                     return;
                 }
@@ -1678,14 +1678,14 @@
                 switchPage(currentPage, 7);  // 跳转到推出面粉盆页
             }
 
-            /* 推出面粉盆 — CCW 2.9圈 */
+            /* 推出面粉盆 — CCW 2.8圈 */
             async function stepOutDough() {
                 showToast('🔄 正在推出面粉盆...');
                 try { await apiCall('/api/step_out', 'POST'); } catch (e) {}
                 switchPage(currentPage, 8);
             }
 
-            /* 收回面粉盆 — CW 2.9圈 */
+            /* 收回面粉盆 — CW 2.8圈 */
             async function stepBackDough() {
                 showToast('🔄 正在收回面粉盆...');
                 try { await apiCall('/api/step_back', 'POST'); } catch (e) {}

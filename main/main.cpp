@@ -30,7 +30,7 @@
 #include "ui.h"
 #include "vars.h"
 #include "motor.h"
-#include "uart.h"
+// #include "uart.h"   // 串口已禁用
 #include "wifi.h"
 #include "http.h"
 
@@ -49,10 +49,10 @@ extern "C" void app_main(void)
     dough_esc_init();  /* 面粉电机 ESC 校准 (5% duty) */
 
     /* ---- 串口 (UART0, 115200bps) ---- */
-    uart_init();
-    xTaskCreate(uart_command_task,  "uart1_cmd", 4096, NULL, 10, NULL);
-    xTaskCreate(uart0_command_task, "uart0_cmd", 4096, NULL, 10, NULL);
-    ESP_LOGI(TAG, "UART init done");
+    // uart_init();
+    // xTaskCreate(uart_command_task,  "uart1_cmd", 4096, NULL, 10, NULL);
+    // xTaskCreate(uart0_command_task, "uart0_cmd", 4096, NULL, 10, NULL);
+    // ESP_LOGI(TAG, "UART init done");
 
     /* ---- WiFi AP + TCP 服务器 (8080) ---- */
     wifi_init_softap();
@@ -78,6 +78,8 @@ extern "C" void app_main(void)
     lvgl_port_unlock();
 
     ESP_LOGI(TAG, "System started, WiFi: dough_mixer / 12345678");
+
+    //magnet_start();
 
     /* 主循环: 驱动 EEZ Flow 状态机 + LVGL 渲染 */
     while (1) {

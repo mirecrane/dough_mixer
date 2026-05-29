@@ -67,6 +67,7 @@ typedef struct _objects_t {
     lv_obj_t *fanhui_4;
     lv_obj_t *ok_weight;
     lv_obj_t *fanhui_8;
+    lv_obj_t *obj11;
     lv_obj_t *select_weight;
     lv_obj_t *dough_add;
     lv_obj_t *dough_sub;
@@ -74,6 +75,7 @@ typedef struct _objects_t {
     lv_obj_t *fanhui_5;
     lv_obj_t *ok_weight_set;
     lv_obj_t *fanhui_9;
+    lv_obj_t *obj12;
     lv_obj_t *ruan_nuo;
     lv_obj_t *shi_zhong;
     lv_obj_t *jiao_jin;
@@ -81,20 +83,27 @@ typedef struct _objects_t {
     lv_obj_t *fanhui_6;
     lv_obj_t *ok_kougan;
     lv_obj_t *fanhui_10;
+    lv_obj_t *obj13;
     lv_obj_t *star_mixer;
     lv_obj_t *stop;
     lv_obj_t *back_mixer;
     lv_obj_t *fanhui_7;
+    lv_obj_t *obj14;
     lv_obj_t *stop_1;
     lv_obj_t *stop_2;
     lv_obj_t *next;
+    lv_obj_t *obj15;
     lv_obj_t *ok_finish;
+    lv_obj_t *obj16;
     lv_obj_t *ok_step_out;
-    lv_obj_t *obj11;
+    lv_obj_t *obj17;
+    lv_obj_t *obj18;
     lv_obj_t *ok_step_back;
-    lv_obj_t *obj12;
+    lv_obj_t *obj19;
+    lv_obj_t *obj20;
     lv_obj_t *ok_finish_2;
-    lv_obj_t *obj13;
+    lv_obj_t *obj21;
+    lv_obj_t *obj22;
 } objects_t;
 
 extern objects_t objects;

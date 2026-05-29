@@ -73,6 +73,7 @@ extern "C" {
 
 /* 水泵参数 */
 #define PUMP_ML_PER_SEC 10.0f           /**< 水泵流量: 10 毫升/秒 (可调) */
+#define WATER_G_PER_SEC 10.0f          /**< 水泵出水速度: 10 克/秒 (可调) */
 
 /* 舵机 PWM 通道 */
 #define CH_STEERING_SERVO  LEDC_CHANNEL_0 /**< 转向舵机通道 (timer S) */

@@ -122,14 +122,36 @@ static esp_err_t api_stop_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* ---- POST /api/step_out — CCW 2.9圈 (推出) ---- */
+static esp_err_t api_step_out_handler(httpd_req_t *req)
+{
+    step_rotate_turns(2.9f, DIR_CCW, 1000);
+    const char *resp = "{\"status\":\"ok\"}";
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
+/* ---- POST /api/step_back — CW 2.9圈 (收回) ---- */
+static esp_err_t api_step_back_handler(httpd_req_t *req)
+{
+    step_rotate_turns(2.9f, DIR_CW, 1000);
+    const char *resp = "{\"status\":\"ok\"}";
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
 /* ---- 注册 URI ---- */
 static void register_handlers(httpd_handle_t server)
 {
     httpd_uri_t handlers[] = {
         { .uri = "/",          .method = HTTP_GET,  .handler = root_get_handler },
-        { .uri = "/api/start", .method = HTTP_POST, .handler = api_start_post_handler },
-        { .uri = "/api/status",.method = HTTP_GET,  .handler = api_status_get_handler },
-        { .uri = "/api/stop",  .method = HTTP_POST, .handler = api_stop_post_handler },
+        { .uri = "/api/start",    .method = HTTP_POST, .handler = api_start_post_handler },
+        { .uri = "/api/status",   .method = HTTP_GET,  .handler = api_status_get_handler },
+        { .uri = "/api/stop",     .method = HTTP_POST, .handler = api_stop_post_handler },
+        { .uri = "/api/step_out", .method = HTTP_POST, .handler = api_step_out_handler },
+        { .uri = "/api/step_back",.method = HTTP_POST, .handler = api_step_back_handler },
     };
     for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         httpd_register_uri_handler(server, &handlers[i]);

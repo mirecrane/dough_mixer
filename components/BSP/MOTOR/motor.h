@@ -41,7 +41,7 @@ extern "C" {
 /* 水泵 / 研磨电机 — 继电器 */
 #define pump_pin    GPIO_NUM_7   /**< 水泵继电器控制引脚 */
 #define grinder_pin GPIO_NUM_16  /**< 研磨电机继电器控制引脚 */
-#define magnet_pin  GPIO_NUM_18  /**< 电磁铁继电器控制引脚 */
+#define magnet_pin  GPIO_NUM_18  /**< 电磁铁继电器控制引脚 (原 GPIO18 与 UART_RX 冲突) */
 
 
 
@@ -75,9 +75,9 @@ extern "C" {
 #define PUMP_ML_PER_SEC 10.0f           /**< 水泵流量: 10 毫升/秒 (可调) */
 #define WATER_G_PER_SEC 10.0f          /**< 水泵出水速度: 10 克/秒 (可调) */
 
-/* 舵机 PWM 通道 */
-#define CH_STEERING_SERVO  LEDC_CHANNEL_0 /**< 转向舵机通道 (timer S) */
-#define CH_PUSH_SERVO      LEDC_CHANNEL_1 /**< 推动舵机通道 (timer S) */
+/* 舵机 PWM 通道 (CH2/CH3 避免与 ESC CH0/CH1 冲突) */
+#define CH_STEERING_SERVO  LEDC_CHANNEL_2 /**< 转向舵机通道 (timer S) */
+#define CH_PUSH_SERVO      LEDC_CHANNEL_3 /**< 推动舵机通道 (timer S) */
 
 /*====================================================================
  *  步进电机 API

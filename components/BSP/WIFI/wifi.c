@@ -65,8 +65,8 @@ static void wifi_send_msg(int sock, const char *msg)
 
 /** 定时电机任务参数 */
 typedef struct {
-    char type;  /**< 电机类型: 'P'=水泵 'D'=面粉 'M'=搅拌 'G'=研磨 */
-    int  val;   /**< 运行时长, 水泵/面粉/研磨为秒, 搅拌为分钟 */
+    char type;  /**< 电机类型: 'P'=水泵 'D'=面粉 'M'=搅拌 'G'=研磨 'A'=电磁铁 */
+    int  val;   /**< 运行时长, 水泵/面粉/研磨/电磁铁为秒, 搅拌为分钟 */
     int  sock;  /**< 客户端 socket, 用于发送状态通知 */
 } wifi_timed_cmd_t;
 
@@ -117,6 +117,15 @@ static void wifi_timed_action_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(cmd->val * 1000));
         grinder_stop();
         wifi_send_msg(cmd->sock, "Grinder stopped.");
+        break;
+
+    case 'A':  /* 电磁铁 — 继电器, 运行 N 秒 */
+        snprintf(msg, sizeof(msg), "Magnet starting for %d seconds...", cmd->val);
+        wifi_send_msg(cmd->sock, msg);
+        magnet_start();
+        vTaskDelay(pdMS_TO_TICKS(cmd->val * 1000));
+        magnet_stop();
+        wifi_send_msg(cmd->sock, "Magnet stopped.");
         break;
     }
 
@@ -217,6 +226,17 @@ static void wifi_process_cmd(int sock, char *str)
         push_servo_set_angle(angle);
         snprintf(msg, sizeof(msg), "Push servo set to %.1f deg: SUCCESS", angle);
         wifi_send_msg(sock, msg);
+        return;
+    }
+
+    /*--------------------------------------------------------------------
+     *  电磁铁 MA (定时指令, 必须在 M 之前匹配)
+     *--------------------------------------------------------------------*/
+
+    /* MA <秒> — 电磁铁 */
+    if (strncasecmp(str, "MA ", 3) == 0) {
+        int sec = atoi(str + 3);
+        wifi_start_timed_task(sock, 'A', sec);
         return;
     }
 

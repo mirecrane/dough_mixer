@@ -122,20 +122,20 @@ static esp_err_t api_stop_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ---- POST /api/step_out — CCW 2.9圈 (推出) ---- */
+/* ---- POST /api/step_out — CCW 2.8圈 (推出) ---- */
 static esp_err_t api_step_out_handler(httpd_req_t *req)
 {
-    step_rotate_turns(2.9f, DIR_CCW, 1000);
+    step_rotate_turns(2.8f, DIR_CCW, 1000);
     const char *resp = "{\"status\":\"ok\"}";
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, strlen(resp));
     return ESP_OK;
 }
 
-/* ---- POST /api/step_back — CW 2.9圈 (收回) ---- */
+/* ---- POST /api/step_back — CW 2.8圈 (收回) ---- */
 static esp_err_t api_step_back_handler(httpd_req_t *req)
 {
-    step_rotate_turns(2.9f, DIR_CW, 1000);
+    step_rotate_turns(2.8f, DIR_CW, 1000);
     const char *resp = "{\"status\":\"ok\"}";
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, strlen(resp));

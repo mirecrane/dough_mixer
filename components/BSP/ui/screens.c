@@ -299,10 +299,6 @@ static void event_handler_cb_finish_ok_finish(lv_event_t *e) {
     
     if (event == LV_EVENT_PRESSED) {
         e->user_data = (void *)0;
-        action_step_out(e);
-    }
-    if (event == LV_EVENT_PRESSED) {
-        e->user_data = (void *)0;
         flowPropagateValueLVGLEvent(flowState, 0, 0, e);
     }
 }
@@ -340,7 +336,7 @@ static void event_handler_cb_step_back_ok_step_back(lv_event_t *e) {
     
     if (event == LV_EVENT_PRESSED) {
         e->user_data = (void *)0;
-        action_step_out(e);
+        action_step_back(e);
     }
     if (event == LV_EVENT_PRESSED) {
         e->user_data = (void *)0;
@@ -1578,7 +1574,7 @@ void create_screen_end() {
         lv_obj_t *parent_obj = obj;
         {
             lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 12, 85);
+            lv_obj_set_pos(obj, 12, 54);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_CHECKED);
@@ -1614,6 +1610,14 @@ void create_screen_end() {
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_style_text_font(obj, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_label_set_text(obj, "");
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 22, 128);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(obj, &ui_font_my_character_18, LV_PART_MAIN | LV_STATE_CHECKED);
+            lv_label_set_text_static(obj, "本月你已经健康生活12次");
         }
     }
     

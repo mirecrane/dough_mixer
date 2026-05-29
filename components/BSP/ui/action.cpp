@@ -93,14 +93,14 @@ void action_stop(lv_event_t *e)
 void action_step_out(lv_event_t *e)
 {
     ESP_LOGI(TAG, "Step out: CCW 2.9 turns");
-    step_rotate_turns(2.9f, DIR_CCW, 1000);
+    step_rotate_turns(2.8f, DIR_CCW, 1000);
 }
 
 /** 步进电机退回 (CW) */
 void action_step_back(lv_event_t *e)
 {
     ESP_LOGI(TAG, "Step back: CW");
-    step_rotate_turns(2.9f, DIR_CW, 1000);
+    step_rotate_turns(2.8f, DIR_CW, 1000);
 }
 
 } /* extern "C" */
